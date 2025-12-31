@@ -1,0 +1,25 @@
+name = "toran-proxy"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+
+# Environment variables
+[vars]
+ENVIRONMENT = "production"
+# WWW_API_URL - Admin/WWW API endpoint for logging (set with: wrangler secret put WWW_API_URL)
+# For production: https://toran-www.pages.dev
+
+# KV namespace for gateway configs (populated by WWW)
+[[kv_namespaces]]
+binding = "GATEWAY_CONFIG"
+id = "915c6dae07f94d2faf888513af25520a"
+preview_id = "9a8e25216f7342c683194d6aebb02adf"
+
+# Routes - Configure after domain is added to Cloudflare
+# routes = [
+#   { pattern = "*.toran.dev/*", zone_name = "toran.dev" }
+# ]
+
+# Development environment
+[env.dev]
+name = "toran-proxy-dev"
+routes = []
