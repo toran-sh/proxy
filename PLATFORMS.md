@@ -97,7 +97,6 @@ Both platforms use the same environment variables:
 |----------|----------|-------------|
 | `TORAN_API_URL` | ✅ Yes | URL of your toran API deployment |
 | `REDIS_URL` | ⬜ No | Redis connection URL with embedded credentials (for caching) |
-| `ENVIRONMENT` | ⬜ No | Environment name (e.g., "production") |
 
 ### Setting Variables
 

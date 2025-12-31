@@ -86,9 +86,6 @@ TORAN_API_URL=https://your-toran-api-deployment.com
 
 # Optional (for response caching)
 REDIS_URL=https://default:your-token@your-redis-instance.upstash.io
-
-# Environment
-ENVIRONMENT=production
 ```
 
 **Redis URL Formats:**

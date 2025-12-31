@@ -78,7 +78,6 @@ Receives request/response logs (already implemented).
 ### Optional
 - `UPSTASH_REDIS_REST_URL` - For response caching
 - `UPSTASH_REDIS_REST_TOKEN` - For response caching
-- `ENVIRONMENT` - Environment name
 
 ## Benefits
 

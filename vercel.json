@@ -3,12 +3,10 @@
   "regions": ["iad1"],
   "env": {
     "TORAN_API_URL": "@www-api-url",
-    "REDIS_URL": "@redis-url",
-    "ENVIRONMENT": "production"
+    "REDIS_URL": "@redis-url"
   },
   "build": {
     "env": {
-      "ENVIRONMENT": "production"
     }
   },
   "rewrites": [

@@ -74,9 +74,6 @@ export interface Env {
 
   // Optional KV cache for mappings
   CACHE?: KVNamespace;
-
-  // Environment
-  ENVIRONMENT?: string;
 }
 
 /**

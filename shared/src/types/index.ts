@@ -30,9 +30,6 @@ export interface Env {
   // Format: redis://default:password@host:port or https://host (for Upstash REST)
   // If not provided, response caching will be disabled
   REDIS_URL?: string;
-
-  // Environment
-  ENVIRONMENT?: string;
 }
 
 /**

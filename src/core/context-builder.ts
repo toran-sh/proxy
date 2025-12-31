@@ -100,7 +100,6 @@ export class ContextBuilder {
       params: pathParams,
 
       env: {
-        environment: env.ENVIRONMENT || 'production',
       },
 
       timing: {

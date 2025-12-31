@@ -18,7 +18,6 @@ export default async function handler(request: Request): Promise<Response> {
   const env: Env = {
     TORAN_API_URL: process.env.TORAN_API_URL || '',
     REDIS_URL: process.env.REDIS_URL,
-    ENVIRONMENT: process.env.ENVIRONMENT || 'production',
   };
 
   // Create Vercel platform context

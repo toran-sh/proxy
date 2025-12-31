@@ -9,7 +9,6 @@
  * - ${request.headers.content-type} - Request headers
  * - ${request.query.userId} - Query parameters
  * - ${body.user.name} - Request/response body fields (JSON)
- * - ${env.ENVIRONMENT} - Environment variables
  */
 
 import type { RequestContext } from '../core/context-builder';
@@ -111,7 +110,6 @@ export interface TemplateContext {
 
   // Environment
   env?: {
-    ENVIRONMENT?: string;
   };
 
   // Custom context data

@@ -21,7 +21,6 @@ This guide covers deploying the Toran Proxy to Vercel Edge Runtime.
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `REDIS_URL` | Redis connection URL with embedded credentials | `https://default:token@host.upstash.io` or `redis://user:pass@host:port` |
-| `ENVIRONMENT` | Environment name | `production` |
 
 ## Deployment Methods
 

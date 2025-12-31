@@ -30,7 +30,6 @@ export interface PlatformEnv {
   // Common
   TORAN_API_URL: string;
   REDIS_URL?: string;
-  ENVIRONMENT?: string;
 
   // Platform-specific (Cloudflare)
   // These will be undefined on Vercel
