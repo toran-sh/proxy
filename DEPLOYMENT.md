@@ -20,8 +20,7 @@ This guide covers deploying the Toran Proxy to Vercel Edge Runtime.
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `REDIS_URL` | Redis connection URL | `https://xxx.upstash.io` or `redis://user:pass@host:port` |
-| `REDIS_TOKEN` | Redis token (for Upstash REST) | `AXXXxxx...` |
+| `REDIS_URL` | Redis connection URL with embedded credentials | `https://default:token@host.upstash.io` or `redis://user:pass@host:port` |
 | `ENVIRONMENT` | Environment name | `production` |
 
 ## Deployment Methods
@@ -64,8 +63,7 @@ vercel --prod
    - In project settings, go to "Environment Variables"
    - Add the required variables:
      - `TORAN_API_URL` (Production, Preview, Development)
-     - `REDIS_URL` (optional)
-     - `REDIS_TOKEN` (optional - for Upstash)
+     - `REDIS_URL` (optional - with embedded credentials)
 
 4. **Deploy:**
    - Click "Deploy"
@@ -187,8 +185,8 @@ TORAN_API_URL=https://toran-api-preview.vercel.app
 **Cause:** Redis is not configured or URL is incorrect.
 
 **Solution:**
-1. Verify `REDIS_URL` and `REDIS_TOKEN` (if using Upstash) are set
-2. Check the URL format is correct (https:// for Upstash or redis:// for standard)
+1. Verify `REDIS_URL` is set with embedded credentials
+2. Check the URL format is correct (`https://default:token@host` for Upstash or `redis://user:pass@host:port` for standard)
 3. Test Redis connection from Vercel logs
 4. Check Redis provider dashboard for connection errors
 5. If Redis is optional for you, this is not an error - caching will be disabled

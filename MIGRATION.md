@@ -73,15 +73,14 @@ ENVIRONMENT = "production"
 TORAN_API_URL=https://your-toran-api.vercel.app
 
 # Optional (for response caching)
-REDIS_URL=https://your-redis.upstash.io
-REDIS_TOKEN=your-token
+REDIS_URL=https://default:your-token@your-redis.upstash.io
 
 # Optional
 ENVIRONMENT=production
 ```
 
 **Redis URL Formats:**
-- Upstash REST: `https://xxx.upstash.io` (requires `REDIS_TOKEN`)
+- Upstash REST: `https://default:token@your-redis.upstash.io`
 - Standard Redis: `redis://user:password@host:port`
 
 ### 4. Deployment
@@ -187,7 +186,7 @@ See README.md for full API specifications.
 1. Go to [Upstash Console](https://console.upstash.com/)
 2. Create a new Redis database
 3. Copy the REST URL and token
-4. Set `REDIS_URL=https://xxx.upstash.io` and `REDIS_TOKEN=your-token`
+4. Set `REDIS_URL=https://default:your-token@your-redis.upstash.io` (embed credentials in URL)
 
 **Option B: Standard Redis**
 1. Set up any Redis instance (AWS ElastiCache, Redis Cloud, etc.)
@@ -203,8 +202,7 @@ In your Vercel project settings, add:
 - `TORAN_API_URL`
 
 **Optional:**
-- `REDIS_URL` (for response caching)
-- `REDIS_TOKEN` (for Upstash REST format)
+- `REDIS_URL` (for response caching, with embedded credentials)
 - `ENVIRONMENT`
 
 ### 3. Deploy

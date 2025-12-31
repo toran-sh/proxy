@@ -85,15 +85,14 @@ Create a `.env` file (see `.env.example`):
 TORAN_API_URL=https://your-toran-api-deployment.com
 
 # Optional (for response caching)
-REDIS_URL=https://your-redis-instance.upstash.io
-REDIS_TOKEN=your-redis-token
+REDIS_URL=https://default:your-token@your-redis-instance.upstash.io
 
 # Environment
 ENVIRONMENT=production
 ```
 
 **Redis URL Formats:**
-- Upstash REST: `https://your-redis-instance.upstash.io` (requires `REDIS_TOKEN`)
+- Upstash REST: `https://default:your-token@your-redis-instance.upstash.io`
 - Standard Redis: `redis://default:password@host:port`
 
 **Note:** Redis is optional. If not configured, response caching will be disabled but the proxy will still work.
@@ -126,8 +125,7 @@ npm run deploy:vercel
 ```bash
 # Set secrets first
 wrangler secret put TORAN_API_URL
-wrangler secret put REDIS_URL      # Optional
-wrangler secret put REDIS_TOKEN    # Optional
+wrangler secret put REDIS_URL      # Optional (with embedded credentials)
 
 # Deploy
 npm run deploy:cloudflare

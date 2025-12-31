@@ -24,9 +24,8 @@ npm install
 
 # Set environment variables
 # .env or Vercel dashboard
-TORAN_API_URL=https://your-www-api.com
-REDIS_URL=https://your-redis.upstash.io  # Optional
-REDIS_TOKEN=your-token                    # Optional
+TORAN_API_URL=https://your-toran-api.com
+REDIS_URL=https://default:your-token@your-redis.upstash.io  # Optional
 
 # Deploy
 npm run deploy:vercel
@@ -40,8 +39,7 @@ npm install
 
 # Set secrets
 wrangler secret put TORAN_API_URL
-wrangler secret put REDIS_URL      # Optional
-wrangler secret put REDIS_TOKEN    # Optional
+wrangler secret put REDIS_URL      # Optional (with embedded credentials)
 
 # Deploy
 npm run deploy:cloudflare
@@ -98,8 +96,7 @@ Both platforms use the same environment variables:
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `TORAN_API_URL` | ✅ Yes | URL of your toran API deployment |
-| `REDIS_URL` | ⬜ No | Redis connection URL (for caching) |
-| `REDIS_TOKEN` | ⬜ No | Redis token (for Upstash) |
+| `REDIS_URL` | ⬜ No | Redis connection URL with embedded credentials (for caching) |
 | `ENVIRONMENT` | ⬜ No | Environment name (e.g., "production") |
 
 ### Setting Variables
@@ -113,8 +110,7 @@ Both platforms use the same environment variables:
 **Cloudflare:**
 ```bash
 wrangler secret put TORAN_API_URL
-wrangler secret put REDIS_URL
-wrangler secret put REDIS_TOKEN
+wrangler secret put REDIS_URL  # With embedded credentials
 ```
 
 ## Platform-Specific Features

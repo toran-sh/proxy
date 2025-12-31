@@ -1,9 +1,11 @@
 /**
  * Redis Client - Singleton Redis connection for Vercel Edge Runtime
  *
- * Supports multiple Redis URL formats:
- * - Upstash REST: https://xxx.upstash.io (requires REDIS_TOKEN env var)
+ * Supports Redis URL formats:
+ * - Upstash REST: https://user:token@host or https://host (with token in query)
  * - Standard Redis: redis://user:password@host:port
+ *
+ * Note: All authentication should be embedded in the URL
  */
 
 import { Redis } from '@upstash/redis';
@@ -19,32 +21,42 @@ export function getRedisClient(redisUrl: string): RedisClient {
   if (!redisClient) {
     let redis: Redis;
 
-    // Parse Redis URL to determine type
+    // Parse Redis URL to determine type and extract credentials
     if (redisUrl.startsWith('http://') || redisUrl.startsWith('https://')) {
       // Upstash REST API format
-      // Token can be in REDIS_TOKEN env var or embedded in URL
-      const token = process.env.REDIS_TOKEN || '';
-      redis = new Redis({
-        url: redisUrl,
-        token: token,
-      });
+      // URL format: https://user:token@host or https://host?token=xxx
+      try {
+        const url = new URL(redisUrl);
+        const token = url.password || url.searchParams.get('token') || '';
+        const cleanUrl = token ? `${url.protocol}//${url.hostname}${url.pathname}` : redisUrl;
+
+        redis = new Redis({
+          url: cleanUrl,
+          token: token,
+        });
+      } catch (error) {
+        // If URL parsing fails, try direct connection
+        redis = new Redis({ url: redisUrl, token: '' });
+      }
     } else if (redisUrl.startsWith('redis://')) {
       // Standard Redis URL format: redis://user:password@host:port
       // Extract credentials from URL
       const url = new URL(redisUrl);
-      const token = url.password || process.env.REDIS_TOKEN || '';
+      const password = url.password || '';
 
-      // Convert to Upstash format if using Upstash
-      // Otherwise, this assumes you're using Upstash REST API wrapper
+      // For Upstash REST compatibility, convert to https
+      const host = url.hostname;
+      const cleanUrl = `https://${host}`;
+
       redis = new Redis({
-        url: redisUrl.replace('redis://', 'https://').split('@')[1]?.split(':')[0] || redisUrl,
-        token: token,
+        url: cleanUrl,
+        token: password,
       });
     } else {
-      // Fallback: assume it's a host and needs https prefix
+      // Plain URL without protocol - assume https
       redis = new Redis({
         url: `https://${redisUrl}`,
-        token: process.env.REDIS_TOKEN || '',
+        token: '',
       });
     }
 

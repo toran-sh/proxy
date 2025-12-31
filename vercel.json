@@ -4,7 +4,6 @@
   "env": {
     "TORAN_API_URL": "@www-api-url",
     "REDIS_URL": "@redis-url",
-    "REDIS_TOKEN": "@redis-token",
     "ENVIRONMENT": "production"
   },
   "build": {

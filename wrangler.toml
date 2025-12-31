@@ -6,8 +6,8 @@ compatibility_date = "2024-12-01"
 [vars]
 ENVIRONMENT = "production"
 # TORAN_API_URL - Required: Admin/toran API endpoint (set with: wrangler secret put TORAN_API_URL)
-# REDIS_URL - Optional: Redis URL for caching (set with: wrangler secret put REDIS_URL)
-# REDIS_TOKEN - Optional: Redis token (set with: wrangler secret put REDIS_TOKEN)
+# REDIS_URL - Optional: Redis URL for caching with embedded credentials (set with: wrangler secret put REDIS_URL)
+#   Format: https://default:token@host or redis://user:password@host:port
 
 # Routes - Configure after domain is added to Cloudflare
 # routes = [

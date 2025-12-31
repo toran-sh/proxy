@@ -79,11 +79,10 @@ npm run deploy:cloudflare # Production deployment
 
 ```bash
 # Required
-TORAN_API_URL=https://your-www-api.com
+TORAN_API_URL=https://your-toran-api.com
 
-# Optional (for caching)
-REDIS_URL=https://your-redis.upstash.io
-REDIS_TOKEN=your-token
+# Optional (for caching, with embedded credentials)
+REDIS_URL=https://default:your-token@your-redis.upstash.io
 
 # Optional
 ENVIRONMENT=production
@@ -100,7 +99,6 @@ ENVIRONMENT=production
 ```bash
 wrangler secret put TORAN_API_URL
 wrangler secret put REDIS_URL
-wrangler secret put REDIS_TOKEN
 ```
 
 ## Migration Guide
