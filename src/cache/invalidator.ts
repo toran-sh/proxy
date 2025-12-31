@@ -10,6 +10,7 @@
 
 import { CacheManager } from './cache-manager';
 import { CacheKeyGenerator } from './key-generator';
+import type { RedisClient } from '../shared/src/types';
 
 export class CacheInvalidator {
   /**
@@ -18,10 +19,10 @@ export class CacheInvalidator {
    */
   static async invalidateRoute(
     routeId: string,
-    kv: KVNamespace | undefined
+    redis: RedisClient | undefined
   ): Promise<number> {
     const pattern = CacheKeyGenerator.getInvalidationPattern(routeId);
-    return CacheManager.deletePattern(pattern, kv);
+    return CacheManager.deletePattern(pattern, redis);
   }
 
   /**
@@ -31,13 +32,13 @@ export class CacheInvalidator {
   static async invalidateGateway(
     gatewayId: string,
     routeIds: string[],
-    kv: KVNamespace | undefined
+    redis: RedisClient | undefined
   ): Promise<number> {
     let totalDeleted = 0;
 
     // Invalidate each route's cache
     for (const routeId of routeIds) {
-      const deleted = await this.invalidateRoute(routeId, kv);
+      const deleted = await this.invalidateRoute(routeId, redis);
       totalDeleted += deleted;
     }
 
@@ -49,9 +50,9 @@ export class CacheInvalidator {
    */
   static async invalidateKey(
     key: string,
-    kv: KVNamespace | undefined
+    redis: RedisClient | undefined
   ): Promise<void> {
-    await CacheManager.delete(key, kv);
+    await CacheManager.delete(key, redis);
   }
 
   /**
@@ -59,16 +60,16 @@ export class CacheInvalidator {
    */
   static async invalidatePattern(
     pattern: string,
-    kv: KVNamespace | undefined
+    redis: RedisClient | undefined
   ): Promise<number> {
-    return CacheManager.deletePattern(pattern, kv);
+    return CacheManager.deletePattern(pattern, redis);
   }
 
   /**
    * Invalidate all cache entries (nuclear option)
    * Use with caution - prefer targeted invalidation
    */
-  static async invalidateAll(kv: KVNamespace | undefined): Promise<number> {
-    return CacheManager.deletePattern('cache:route:*', kv);
+  static async invalidateAll(redis: RedisClient | undefined): Promise<number> {
+    return CacheManager.deletePattern('cache:route:*', redis);
   }
 }

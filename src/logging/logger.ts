@@ -9,7 +9,7 @@
  * - Sends logs to WWW endpoint via HTTP POST
  */
 
-import type { Log, Env } from '../../../shared/src/types';
+import type { Log, Env } from '../shared/src/types';
 import type { RequestContext } from '../core/context-builder';
 
 const MAX_BODY_SIZE = 10 * 1024; // 10KB

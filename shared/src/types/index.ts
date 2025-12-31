@@ -8,26 +8,28 @@ export * from './route';
 export * from './log';
 
 /**
- * KVNamespace type (from @cloudflare/workers-types)
+ * Redis client interface (compatible with @upstash/redis or ioredis)
+ * Optional - only used for response caching if configured
  */
-export interface KVNamespace {
-  get(key: string, options?: { type: 'text' | 'json' | 'arrayBuffer' | 'stream' }): Promise<any>;
-  put(key: string, value: string | ArrayBuffer | ReadableStream, options?: { expirationTtl?: number; expiration?: number; metadata?: any }): Promise<void>;
-  delete(key: string): Promise<void>;
-  list(options?: { prefix?: string; limit?: number; cursor?: string }): Promise<any>;
+export interface RedisClient {
+  get(key: string): Promise<string | null>;
+  set(key: string, value: string, options?: { ex?: number; px?: number }): Promise<string | null>;
+  del(key: string): Promise<number>;
+  keys(pattern: string): Promise<string[]>;
 }
 
 /**
- * Cloudflare Worker environment bindings (Proxy)
+ * Environment bindings (Vercel/Edge Runtime)
  */
 export interface Env {
-  // Gateway config KV namespace (populated by WWW)
-  // Key format: gateway:config:{subdomain}
-  GATEWAY_CONFIG: KVNamespace;
+  // WWW API URL - Required for fetching gateway configs and logging
+  // Example: https://your-toran-www.vercel.app
+  WWW_API_URL: string;
 
-  // WWW API URL for logging
-  // Proxy sends logs to WWW endpoint
-  WWW_API_URL?: string;
+  // Redis URL (Optional - only for response caching)
+  // Format: redis://default:password@host:port or https://host (for Upstash REST)
+  // If not provided, response caching will be disabled
+  REDIS_URL?: string;
 
   // Environment
   ENVIRONMENT?: string;

@@ -8,7 +8,7 @@
  * - Method matching (GET, POST, or *)
  */
 
-import type { FlattenedRoute } from '../../../shared/src/types';
+import type { FlattenedRoute } from '../shared/src/types';
 
 export interface RouteMatch {
   route: FlattenedRoute;

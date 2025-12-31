@@ -1,10 +1,10 @@
 /**
- * toran.dev API Accelerator & Debugger - Cloudflare Worker Entry Point
+ * toran.dev API Accelerator & Debugger - Vercel Edge Runtime Entry Point
  *
  * Pipeline Flow:
  * 1. Validate configuration
  * 2. Parse subdomain from request
- * 3. Load gateway config (flattened, cached in KV)
+ * 3. Load gateway config (flattened, cached in Redis)
  * 4. Match route using compiled regex
  * 5. Build request context (params, variables, etc.)
  * 6. Check cache - return immediately on cache hit
@@ -17,7 +17,8 @@
  * 13. Return response to client
  */
 
-import type { Env } from '../../shared/src/types';
+import type { Env } from '../shared/src/types';
+import type { PlatformContext } from './platform/types';
 import { GatewayLoader } from './core/gateway-loader';
 import { Router } from './core/router';
 import { ContextBuilder } from './core/context-builder';
@@ -25,18 +26,31 @@ import { MutationEngine } from './mutations/engine';
 import { CacheManager } from './cache/cache-manager';
 import { CacheKeyGenerator } from './cache/key-generator';
 import { Logger } from './logging/logger';
+import { getRedisClient } from './lib/redis';
 
-export default {
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    const startTime = performance.now();
+export async function handleRequest(
+  request: Request,
+  env: Env,
+  platformContext: PlatformContext
+): Promise<Response> {
+  const startTime = performance.now();
 
-    try {
-      // ========================================================================
-      // 1. Validate Configuration
-      // ========================================================================
-      if (!env.GATEWAY_CONFIG) {
-        return errorResponse('CONFIGURATION_ERROR', 'Gateway config KV namespace not bound', 500);
-      }
+  try {
+    // ========================================================================
+    // 1. Validate Configuration
+    // ========================================================================
+    if (!env.WWW_API_URL) {
+      return errorResponse('CONFIGURATION_ERROR', 'WWW API URL not configured', 500);
+    }
+
+    // Initialize Redis client (optional - for response caching only)
+    const redis = env.REDIS_URL
+      ? getRedisClient(env.REDIS_URL)
+      : undefined;
+
+    if (!redis) {
+      console.log('Redis not configured - response caching disabled');
+    }
 
       // ========================================================================
       // 2. Parse Subdomain
@@ -49,7 +63,7 @@ export default {
       }
 
       // ========================================================================
-      // 3. Load Gateway Config (cached in KV)
+      // 3. Load Gateway Config (from WWW API with in-memory cache)
       // ========================================================================
       const gateway = await GatewayLoader.load(subdomain, env);
 
@@ -94,7 +108,7 @@ export default {
         );
 
         // Log the no-match request
-        ctx.waitUntil(
+        platformContext.waitUntil(
           Logger.logRequest(context, noMatchResponse, {
             routeId: null,
             routeMatched: false,
@@ -133,7 +147,7 @@ export default {
       if (route.cache?.enabled) {
         const cachingStart = performance.now();
         cacheKey = CacheKeyGenerator.generate(route, context);
-        const cached = await CacheManager.get(cacheKey, env.CACHE);
+        const cached = await CacheManager.get(cacheKey, redis);
         const cachingEnd = performance.now();
 
         if (cached) {
@@ -142,7 +156,7 @@ export default {
           const cachedResponse = CacheManager.toResponse(cached);
 
           // Log cache hit
-          ctx.waitUntil(
+          platformContext.waitUntil(
             Logger.logRequest(context, cachedResponse, {
               routeId: route._id || null,
               routeName: route.name,
@@ -207,8 +221,8 @@ export default {
       // ========================================================================
       if (route.cache?.enabled && cacheKey && CacheKeyGenerator.shouldCache(response, route.cache)) {
         const cachingStart = performance.now();
-        ctx.waitUntil(
-          CacheManager.set(cacheKey, response, route.cache.ttl, route._id!, env.CACHE)
+        platformContext.waitUntil(
+          CacheManager.set(cacheKey, response, route.cache.ttl, route._id!, redis)
         );
       }
 
@@ -216,7 +230,7 @@ export default {
       // 11. Log Request/Response
       // ========================================================================
       const endTime = performance.now();
-      ctx.waitUntil(
+      platformContext.waitUntil(
         Logger.logRequest(context, response, {
           routeId: route._id || null,
           routeName: route.name,
@@ -248,8 +262,7 @@ export default {
         500
       );
     }
-  },
-};
+  }
 
 /**
  * Extract subdomain from request hostname

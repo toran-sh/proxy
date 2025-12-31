@@ -8,7 +8,7 @@
  * - rename: Rename parameter key
  */
 
-import type { QueryParamMutation } from '../../../shared/src/types';
+import type { QueryParamMutation } from '../shared/src/types';
 import { TemplateEngine, type TemplateContext } from './template-engine';
 import { ConditionEvaluator, type ConditionContext } from './condition-evaluator';
 import type { MutationContext } from './header-mutator';

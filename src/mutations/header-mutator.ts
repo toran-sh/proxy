@@ -8,7 +8,7 @@
  * - rename: Rename header key
  */
 
-import type { HeaderMutation } from '../../../shared/src/types';
+import type { HeaderMutation } from '../shared/src/types';
 import type { RequestContext } from '../core/context-builder';
 import { TemplateEngine, type TemplateContext } from './template-engine';
 import { ConditionEvaluator, type ConditionContext } from './condition-evaluator';

@@ -1,23 +1,31 @@
 {
   "name": "toran-proxy",
   "version": "1.0.0",
-  "description": "Cloudflare Worker API Gateway Proxy",
+  "description": "Multi-platform API Gateway Proxy (Vercel Edge + Cloudflare Workers)",
   "private": true,
-  "main": "src/index.ts",
+  "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
-    "tail": "wrangler tail",
+    "dev": "npm run dev:vercel",
+    "dev:vercel": "vercel dev",
+    "dev:cloudflare": "wrangler dev",
+    "build": "tsc --noEmit",
+    "deploy": "npm run deploy:vercel",
+    "deploy:vercel": "vercel --prod",
+    "deploy:cloudflare": "wrangler deploy",
     "test": "vitest",
     "type-check": "tsc --noEmit"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241127.0",
+    "@types/node": "^20.10.0",
+    "@vercel/node": "^3.0.0",
     "typescript": "^5.3.3",
+    "vercel": "^33.0.0",
     "vitest": "^1.0.0",
     "wrangler": "^4.54.0"
   },
   "dependencies": {
-    "vite": "7.3.0"
+    "@upstash/redis": "^1.28.0",
+    "@vercel/edge": "^1.1.1"
   }
 }

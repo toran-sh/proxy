@@ -6,7 +6,7 @@
  * - Post-response mutations (headers, body, status)
  */
 
-import type { PreMutations, PostMutations, FlattenedRoute } from '../../../shared/src/types';
+import type { PreMutations, PostMutations, FlattenedRoute } from '../shared/src/types';
 import type { RequestContext } from '../core/context-builder';
 import { HeaderMutator, type MutationContext } from './header-mutator';
 import { QueryMutator } from './query-mutator';

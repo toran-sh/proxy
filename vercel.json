@@ -1,0 +1,21 @@
+{
+  "version": 2,
+  "regions": ["iad1"],
+  "env": {
+    "WWW_API_URL": "@www-api-url",
+    "REDIS_URL": "@redis-url",
+    "REDIS_TOKEN": "@redis-token",
+    "ENVIRONMENT": "production"
+  },
+  "build": {
+    "env": {
+      "ENVIRONMENT": "production"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/api/proxy"
+    }
+  ]
+}

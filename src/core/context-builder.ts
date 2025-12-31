@@ -7,7 +7,7 @@
  * - Logging
  */
 
-import type { Env, FlattenedGateway } from '../../../shared/src/types';
+import type { Env, FlattenedGateway } from '../shared/src/types';
 
 export interface RequestContext {
   // Request information
@@ -71,8 +71,9 @@ export class ContextBuilder {
     // Get request body (if present)
     const body = await this.extractBody(request);
 
-    // Get Cloudflare request metadata (if available)
-    const cf = (request as any).cf || {};
+    // Get geolocation metadata (from headers or edge runtime)
+    // Vercel provides: x-vercel-ip-country, x-vercel-ip-city, etc.
+    const geo = this.extractGeoLocation(headers);
 
     return {
       request: {
@@ -83,11 +84,11 @@ export class ContextBuilder {
         query,
         headers,
         body,
-        ip: headers['cf-connecting-ip'] || headers['x-forwarded-for'] || 'unknown',
+        ip: headers['x-real-ip'] || headers['x-forwarded-for'] || 'unknown',
         userAgent: headers['user-agent'] || 'unknown',
-        country: cf.country,
-        region: cf.region,
-        city: cf.city,
+        country: geo.country,
+        region: geo.region,
+        city: geo.city,
       },
 
       gateway: {
@@ -128,6 +129,22 @@ export class ContextBuilder {
     });
 
     return headers;
+  }
+
+  /**
+   * Extract geolocation from request headers
+   * Supports Vercel Edge Runtime headers and standard forwarded headers
+   */
+  private static extractGeoLocation(headers: Record<string, string>): {
+    country?: string;
+    region?: string;
+    city?: string;
+  } {
+    return {
+      country: headers['x-vercel-ip-country'] || headers['cf-ipcountry'],
+      region: headers['x-vercel-ip-country-region'],
+      city: headers['x-vercel-ip-city'],
+    };
   }
 
   /**

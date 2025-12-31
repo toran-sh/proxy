@@ -10,7 +10,7 @@
  * - Custom expressions
  */
 
-import type { MutationCondition } from '../../../shared/src/types';
+import type { MutationCondition } from '../shared/src/types';
 import type { RequestContext } from '../core/context-builder';
 import { TemplateEngine } from './template-engine';
 

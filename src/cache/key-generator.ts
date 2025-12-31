@@ -11,7 +11,7 @@
  * Format: cache:route:{routeId}:{hash}
  */
 
-import type { Route } from '../../../shared/src/types';
+import type { Route } from '../shared/src/types';
 import type { RequestContext } from '../core/context-builder';
 
 export class CacheKeyGenerator {
