@@ -28,7 +28,7 @@ export interface PlatformContext {
  */
 export interface PlatformEnv {
   // Common
-  WWW_API_URL: string;
+  TORAN_API_URL: string;
   REDIS_URL?: string;
   ENVIRONMENT?: string;
 

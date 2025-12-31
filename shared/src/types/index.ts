@@ -22,9 +22,9 @@ export interface RedisClient {
  * Environment bindings (Vercel/Edge Runtime)
  */
 export interface Env {
-  // WWW API URL - Required for fetching gateway configs and logging
-  // Example: https://your-toran-www.vercel.app
-  WWW_API_URL: string;
+  // Toran API URL - Required for fetching gateway configs and logging
+  // Example: https://your-toran-api.vercel.app
+  TORAN_API_URL: string;
 
   // Redis URL (Optional - only for response caching)
   // Format: redis://default:password@host:port or https://host (for Upstash REST)

@@ -21,7 +21,7 @@ export default {
 
     // Convert PlatformEnv to Env
     const workerEnv: Env = {
-      WWW_API_URL: env.WWW_API_URL,
+      TORAN_API_URL: env.TORAN_API_URL,
       REDIS_URL: env.REDIS_URL,
       ENVIRONMENT: env.ENVIRONMENT,
     };

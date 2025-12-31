@@ -1,24 +1,24 @@
 # Toran Proxy - Lightweight API Gateway Worker
 
-Stateless, edge-deployed reverse proxy that reads gateway configurations from WWW API and forwards requests to backend services.
+Stateless, edge-deployed reverse proxy that reads gateway configurations from toran API and forwards requests to backend services.
 
 **Multi-Platform Support:** Deploy to Vercel Edge Runtime or Cloudflare Workers with the same codebase.
 
 ## Architecture
 
-- **Reads**: Gateway configs from WWW API (with in-memory caching)
-- **Writes**: Logs to WWW API via HTTP POST
+- **Reads**: Gateway configs from toran API (with in-memory caching)
+- **Writes**: Logs to toran API via HTTP POST
 - **Optional**: Redis for response caching (can be disabled)
 - **Platforms**: Vercel Edge Runtime or Cloudflare Workers
 
 ## Key Features
 
 - 🚀 **Multi-platform deployment** - Vercel Edge or Cloudflare Workers
-- ⚡ **Fast config reads** from WWW API (60s in-memory cache)
+- ⚡ **Fast config reads** from toran API (60s in-memory cache)
 - 🔄 **Path-based routing** with regex matching
 - 🎯 **Request/response mutations** (headers, body, query params)
 - 💾 **Smart response caching** with optional Redis backend
-- 📊 **Detailed logging** sent to WWW API
+- 📊 **Detailed logging** sent to toran API
 
 ## Project Structure
 
@@ -35,7 +35,7 @@ toran-proxy/
 │   ├── lib/
 │   │   └── redis.ts          # Redis client (optional - supports multiple formats)
 │   ├── core/
-│   │   ├── gateway-loader.ts # Load configs from WWW API
+│   │   ├── gateway-loader.ts # Load configs from toran API
 │   │   ├── router.ts         # Route matching
 │   │   └── context-builder.ts
 │   ├── mutations/
@@ -46,7 +46,7 @@ toran-proxy/
 │   ├── cache/
 │   │   └── cache-manager.ts  # Redis-based caching
 │   ├── logging/
-│   │   └── logger.ts         # POST logs to toran-www
+│   │   └── logger.ts         # POST logs to toran-api
 │   └── proxy/
 │       └── proxy-client.ts
 ├── shared/                   # Shared TypeScript types
@@ -82,7 +82,7 @@ Create a `.env` file (see `.env.example`):
 
 ```bash
 # Required
-WWW_API_URL=https://your-toran-www-deployment.com
+TORAN_API_URL=https://your-toran-api-deployment.com
 
 # Optional (for response caching)
 REDIS_URL=https://your-redis-instance.upstash.io
@@ -125,7 +125,7 @@ npm run deploy:vercel
 **Cloudflare:**
 ```bash
 # Set secrets first
-wrangler secret put WWW_API_URL
+wrangler secret put TORAN_API_URL
 wrangler secret put REDIS_URL      # Optional
 wrangler secret put REDIS_TOKEN    # Optional
 
@@ -135,13 +135,13 @@ npm run deploy:cloudflare
 
 See [PLATFORMS.md](./PLATFORMS.md) for detailed deployment instructions.
 
-## WWW API Integration
+## toran API Integration
 
-The proxy communicates with the WWW API for both configuration loading and logging.
+The proxy communicates with the toran API for both configuration loading and logging.
 
 ### API Endpoints Required
 
-The WWW API must implement the following endpoints:
+The toran API must implement the following endpoints:
 
 #### 1. Get Gateway Configuration
 
@@ -339,7 +339,7 @@ The proxy implements two levels of caching:
 
 ### 1. Gateway Configuration Cache (In-Memory)
 - **TTL:** 60 seconds
-- **Purpose:** Reduce API calls to WWW for config fetching
+- **Purpose:** Reduce API calls to toran API for config fetching
 - **Fallback:** If API fails, stale cache is used
 - **Storage:** In-memory (per Edge Function instance)
 
@@ -375,7 +375,7 @@ GatewayLoader.clearCache();
 
 ## Related Projects
 
-- **toran-www**: Admin panel and API that manages MongoDB and provides API endpoints for proxy
+- **toran-api**: Admin panel and API that manages MongoDB and provides API endpoints for proxy
 
 ## License
 

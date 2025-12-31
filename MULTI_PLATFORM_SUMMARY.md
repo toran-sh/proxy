@@ -79,7 +79,7 @@ npm run deploy:cloudflare # Production deployment
 
 ```bash
 # Required
-WWW_API_URL=https://your-www-api.com
+TORAN_API_URL=https://your-www-api.com
 
 # Optional (for caching)
 REDIS_URL=https://your-redis.upstash.io
@@ -98,7 +98,7 @@ ENVIRONMENT=production
 
 **Cloudflare:**
 ```bash
-wrangler secret put WWW_API_URL
+wrangler secret put TORAN_API_URL
 wrangler secret put REDIS_URL
 wrangler secret put REDIS_TOKEN
 ```
@@ -110,7 +110,7 @@ No changes needed! Your existing deployment continues to work.
 
 ### Want to Add Cloudflare?
 1. Install dependencies: `npm install` (already updated)
-2. Set secrets: `wrangler secret put WWW_API_URL`
+2. Set secrets: `wrangler secret put TORAN_API_URL`
 3. Deploy: `npm run deploy:cloudflare`
 
 ### Want to Switch from Vercel to Cloudflare?
@@ -184,7 +184,7 @@ curl http://localhost:8787?subdomain=test
 ## Support
 
 Both platforms use the same:
-- WWW API for configuration
+- toran API for configuration
 - Redis for caching (optional)
 - Environment variables
 - Core logic and features

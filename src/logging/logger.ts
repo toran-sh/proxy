@@ -1,12 +1,12 @@
 /**
- * Enhanced Logger - Posts logs to WWW logging endpoint
+ * Enhanced Logger - Posts logs to toran API logging endpoint
  *
  * Features:
  * - Detailed timing breakdown (routing, mutations, proxy, caching)
  * - Request/response capture with size limits
  * - Error tracking with phase information
  * - Body truncation for large payloads
- * - Sends logs to WWW endpoint via HTTP POST
+ * - Sends logs to toran API endpoint via HTTP POST
  */
 
 import type { Log, Env } from '../shared/src/types';
@@ -48,7 +48,7 @@ export interface LogOptions {
 export class Logger {
   /**
    * Log request/response with execution details
-   * Sends log to WWW logging endpoint
+   * Sends log to toran API logging endpoint
    */
   static async logRequest(
     context: RequestContext,
@@ -110,20 +110,20 @@ export class Logger {
         error: options.error,
       };
 
-      // Send log to WWW endpoint
-      await this.sendLogToWWW(log, env);
+      // Send log to toran API endpoint
+      await this.sendLogToToranAPI(log, env);
     } catch (error) {
       console.error('Failed to log request:', error);
     }
   }
 
   /**
-   * Send log to WWW logging endpoint via HTTP POST
+   * Send log to toran API logging endpoint via HTTP POST
    */
-  private static async sendLogToWWW(log: Partial<Log>, env: Env): Promise<void> {
+  private static async sendLogToToranAPI(log: Partial<Log>, env: Env): Promise<void> {
     try {
-      const wwwApiUrl = env.WWW_API_URL || 'http://localhost:5173';
-      const url = `${wwwApiUrl}/api/logs`;
+      const toranApiUrl = env.TORAN_API_URL || 'http://localhost:5173';
+      const url = `${toranApiUrl}/api/logs`;
 
       const response = await fetch(url, {
         method: 'POST',
@@ -134,10 +134,10 @@ export class Logger {
       });
 
       if (!response.ok) {
-        console.error(`Failed to send log to WWW: ${response.status} ${response.statusText}`);
+        console.error(`Failed to send log to toran API: ${response.status} ${response.statusText}`);
       }
     } catch (error) {
-      console.error('Error sending log to WWW:', error);
+      console.error('Error sending log to toran API:', error);
     }
   }
 

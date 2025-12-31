@@ -7,17 +7,17 @@ The Toran Proxy has been updated to use **API-based configuration loading** inst
 ### Before (Redis-based)
 ```
 ┌─────────────┐
-│ WWW writes  │──→ Redis ──→ ┌──────────┐
-│   config    │              │  Proxy   │
-└─────────────┘              │  reads   │
-                             └──────────┘
+│ Toran API   │──→ Redis ──→ ┌──────────┐
+│   writes    │              │  Proxy   │
+│   config    │              │  reads   │
+└─────────────┘              └──────────┘
 ```
 
 ### After (API-based)
 ```
 ┌─────────────┐
-│    WWW      │←── HTTP GET ──┌──────────┐
-│  API Server │               │  Proxy   │
+│  Toran API  │←── HTTP GET ──┌──────────┐
+│   Server    │               │  Proxy   │
 │             │── Config ────→│  (cache) │
 └─────────────┘               └──────────┘
 ```
@@ -26,7 +26,7 @@ The Toran Proxy has been updated to use **API-based configuration loading** inst
 
 ### Configuration Loading
 - **Old:** Read from Redis (`gateway:config:{subdomain}`)
-- **New:** Fetch from WWW API (`GET /api/gateways/:subdomain`)
+- **New:** Fetch from toran API (`GET /api/gateways/:subdomain`)
 - **Caching:** In-memory cache with 60-second TTL
 
 ### Response Caching
@@ -35,12 +35,12 @@ The Toran Proxy has been updated to use **API-based configuration loading** inst
 - **Behavior:** Disabled if Redis not configured
 
 ### Logging
-- **Old:** POST to WWW API
+- **Old:** POST to toran API
 - **New:** Same (no change)
 
-## Required WWW API Endpoints
+## Required toran API Endpoints
 
-Your toran-www deployment must implement:
+Your toran API deployment must implement:
 
 ### 1. GET /api/gateways/:subdomain
 Returns the complete gateway configuration for a subdomain.
@@ -73,7 +73,7 @@ Receives request/response logs (already implemented).
 ## Environment Variables
 
 ### Required
-- `WWW_API_URL` - URL of your toran-www deployment
+- `TORAN_API_URL` - URL of your toran API deployment
 
 ### Optional
 - `UPSTASH_REDIS_REST_URL` - For response caching
@@ -85,7 +85,7 @@ Receives request/response logs (already implemented).
 ✅ **Simpler Architecture**
 - No need to sync configs to Redis/KV
 - Configs are always up-to-date (immediate consistency)
-- One source of truth (WWW API)
+- One source of truth (toran API)
 
 ✅ **Lower Infrastructure Costs**
 - Redis is optional (only for response caching)
@@ -95,7 +95,7 @@ Receives request/response logs (already implemented).
 ✅ **Better Developer Experience**
 - Config changes are live immediately (after 60s cache)
 - No manual sync or migration scripts
-- Easier to debug (just check WWW API)
+- Easier to debug (just check toran API)
 
 ✅ **Flexible Deployment**
 - Can run without Redis
@@ -110,8 +110,8 @@ Receives request/response logs (already implemented).
 - KV was ~1-5ms consistently
 
 ⚠️ **API Dependency**
-- Proxy depends on WWW API availability
-- If WWW API is down, stale cache is used
+- Proxy depends on toran API availability
+- If toran API is down, stale cache is used
 - After stale cache expires, requests fail
 
 ⚠️ **Cache Invalidation**
@@ -121,14 +121,14 @@ Receives request/response logs (already implemented).
 
 ## Migration Steps
 
-1. **Update toran-www:**
+1. **Update toran API:**
    - Implement `GET /api/gateways/:subdomain` endpoint
    - Return gateway config in required format
-   - Deploy toran-www
+   - Deploy toran-api
 
 2. **Update toran-proxy:**
    - Code already updated (this repo)
-   - Set `WWW_API_URL` environment variable
+   - Set `TORAN_API_URL` environment variable
    - (Optional) Set Redis variables for caching
    - Deploy to Vercel
 
@@ -162,15 +162,15 @@ If needed, you can rollback to Redis-based config:
 - `api/proxy.ts` - Entry point updated
 
 **Documentation:**
-- `README.md` - Added WWW API specifications
+- `README.md` - Added toran API specifications
 - `MIGRATION.md` - Migration guide updated
 - `DEPLOYMENT.md` - New deployment guide (created)
 - `SUMMARY.md` - This file (created)
 
 ## Next Steps
 
-1. **Implement WWW API endpoints** (`GET /api/gateways/:subdomain`)
-2. **Deploy toran-www** with the new endpoint
+1. **Implement toran API endpoints** (`GET /api/gateways/:subdomain`)
+2. **Deploy toran-api** with the new endpoint
 3. **Configure environment variables** in Vercel
 4. **Deploy toran-proxy** to Vercel
 5. **Test end-to-end** with a sample gateway

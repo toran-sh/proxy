@@ -24,7 +24,7 @@ npm install
 
 # Set environment variables
 # .env or Vercel dashboard
-WWW_API_URL=https://your-www-api.com
+TORAN_API_URL=https://your-www-api.com
 REDIS_URL=https://your-redis.upstash.io  # Optional
 REDIS_TOKEN=your-token                    # Optional
 
@@ -39,7 +39,7 @@ npm run deploy:vercel
 npm install
 
 # Set secrets
-wrangler secret put WWW_API_URL
+wrangler secret put TORAN_API_URL
 wrangler secret put REDIS_URL      # Optional
 wrangler secret put REDIS_TOKEN    # Optional
 
@@ -97,7 +97,7 @@ Both platforms use the same environment variables:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `WWW_API_URL` | ✅ Yes | URL of your toran-www deployment |
+| `TORAN_API_URL` | ✅ Yes | URL of your toran API deployment |
 | `REDIS_URL` | ⬜ No | Redis connection URL (for caching) |
 | `REDIS_TOKEN` | ⬜ No | Redis token (for Upstash) |
 | `ENVIRONMENT` | ⬜ No | Environment name (e.g., "production") |
@@ -112,7 +112,7 @@ Both platforms use the same environment variables:
 
 **Cloudflare:**
 ```bash
-wrangler secret put WWW_API_URL
+wrangler secret put TORAN_API_URL
 wrangler secret put REDIS_URL
 wrangler secret put REDIS_TOKEN
 ```
@@ -189,7 +189,7 @@ Use DNS failover or load balancing to route traffic between platforms.
 ### Vercel → Cloudflare
 
 1. Install Cloudflare dependencies (already in package.json)
-2. Set Cloudflare secrets: `wrangler secret put WWW_API_URL`
+2. Set Cloudflare secrets: `wrangler secret put TORAN_API_URL`
 3. Deploy: `npm run deploy:cloudflare`
 4. Update DNS to point to Cloudflare
 

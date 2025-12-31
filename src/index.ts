@@ -1,10 +1,10 @@
 /**
- * toran.dev API Accelerator & Debugger - Vercel Edge Runtime Entry Point
+ * toran.dev API Accelerator & Debugger - Multi-Platform Entry Point
  *
  * Pipeline Flow:
  * 1. Validate configuration
  * 2. Parse subdomain from request
- * 3. Load gateway config (flattened, cached in Redis)
+ * 3. Load gateway config (from toran API, cached in-memory)
  * 4. Match route using compiled regex
  * 5. Build request context (params, variables, etc.)
  * 6. Check cache - return immediately on cache hit
@@ -39,8 +39,8 @@ export async function handleRequest(
     // ========================================================================
     // 1. Validate Configuration
     // ========================================================================
-    if (!env.WWW_API_URL) {
-      return errorResponse('CONFIGURATION_ERROR', 'WWW API URL not configured', 500);
+    if (!env.TORAN_API_URL) {
+      return errorResponse('CONFIGURATION_ERROR', 'Toran API URL not configured', 500);
     }
 
     // Initialize Redis client (optional - for response caching only)
@@ -63,7 +63,7 @@ export async function handleRequest(
       }
 
       // ========================================================================
-      // 3. Load Gateway Config (from WWW API with in-memory cache)
+      // 3. Load Gateway Config (from toran API with in-memory cache)
       // ========================================================================
       const gateway = await GatewayLoader.load(subdomain, env);
 

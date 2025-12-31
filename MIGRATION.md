@@ -4,14 +4,14 @@ This document outlines the changes made to migrate the Toran Proxy from Cloudfla
 
 ## Summary of Changes
 
-### 1. Configuration Loading: KV → WWW API
+### 1. Configuration Loading: KV → toran API
 
 **Before (Cloudflare KV):**
 ```typescript
 const config = await env.GATEWAY_CONFIG.get(key, 'json');
 ```
 
-**After (WWW API with in-memory cache):**
+**After (toran API with in-memory cache):**
 ```typescript
 const config = await GatewayLoader.load(subdomain, env);
 // Fetches from: GET /api/gateways/:subdomain
@@ -70,7 +70,7 @@ ENVIRONMENT = "production"
 **After (Vercel Environment Variables):**
 ```bash
 # Required
-WWW_API_URL=https://your-toran-www.vercel.app
+TORAN_API_URL=https://your-toran-api.vercel.app
 
 # Optional (for response caching)
 REDIS_URL=https://your-redis.upstash.io
@@ -171,11 +171,11 @@ ip: headers['x-real-ip'] || headers['x-forwarded-for']
 
 ## Setup Instructions
 
-### 1. Configure WWW API URL (Required)
+### 1. Configure toran API URL (Required)
 
-Set the `WWW_API_URL` environment variable to your toran-www deployment URL.
+Set the `TORAN_API_URL` environment variable to your toran API deployment URL.
 
-The WWW API must implement these endpoints:
+The toran API must implement these endpoints:
 - `GET /api/gateways/:subdomain` - Returns gateway configuration
 - `POST /api/logs` - Receives request/response logs
 
@@ -200,7 +200,7 @@ If you skip this step, response caching will be disabled but the proxy will stil
 In your Vercel project settings, add:
 
 **Required:**
-- `WWW_API_URL`
+- `TORAN_API_URL`
 
 **Optional:**
 - `REDIS_URL` (for response caching)
@@ -219,11 +219,11 @@ vercel --prod
 
 ## Data Migration
 
-Gateway configurations are now fetched from the WWW API instead of being stored in KV/Redis.
+Gateway configurations are now fetched from the toran API instead of being stored in KV/Redis.
 
 ### Migration Steps:
 
-1. **Update toran-www** to implement the required API endpoints:
+1. **Update toran API** to implement the required API endpoints:
    - `GET /api/gateways/:subdomain`
    - `POST /api/logs`
 
@@ -238,7 +238,7 @@ Gateway configurations are now fetched from the WWW API instead of being stored 
 
 ### Configuration Loading: KV vs API
 
-| Feature | Cloudflare KV | WWW API (Current) |
+| Feature | Cloudflare KV | toran API (Current) |
 |---------|---------------|-------------------|
 | Read Latency | ~1-5ms | ~50-200ms (first request) |
 | Subsequent Reads | ~1-5ms | < 1ms (in-memory cache) |
@@ -260,7 +260,7 @@ Gateway configurations are now fetched from the WWW API instead of being stored 
 - **Gateway Config Cache:** The 60-second in-memory cache reduces API calls significantly
 - **Response Cache:** Enable Redis for high-traffic routes with stable responses
 - **Cache Invalidation:** Clear gateway config cache via API when configs change
-- **Monitoring:** Track API call rates to WWW and Redis connection usage
+- **Monitoring:** Track API call rates to toran API and Redis connection usage
 
 ## Testing
 

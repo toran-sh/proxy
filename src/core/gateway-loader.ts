@@ -1,8 +1,8 @@
 /**
- * Gateway Loader - Loads gateway configurations from WWW API
+ * Gateway Loader - Loads gateway configurations from toran API
  *
  * Architecture:
- * - Proxy fetches gateway configs from WWW API on demand
+ * - Proxy fetches gateway configs from toran API on demand
  * - Configs are cached in-memory with short TTL to reduce API calls
  * - No database or Redis access needed for config loading
  */
@@ -15,7 +15,7 @@ const CACHE_TTL_MS = 60 * 1000; // 60 seconds
 
 export class GatewayLoader {
   /**
-   * Load gateway config from WWW API
+   * Load gateway config from toran API
    * Uses in-memory cache to reduce API calls
    */
   static async load(subdomain: string, env: Env): Promise<FlattenedGateway | null> {
@@ -26,9 +26,9 @@ export class GatewayLoader {
     }
 
     try {
-      // Fetch from WWW API
-      const wwwApiUrl = env.WWW_API_URL || 'http://localhost:5173';
-      const url = `${wwwApiUrl}/api/gateways/${subdomain}`;
+      // Fetch from toran API
+      const toranApiUrl = env.TORAN_API_URL || 'http://localhost:5173';
+      const url = `${toranApiUrl}/api/gateways/${subdomain}`;
 
       const response = await fetch(url, {
         method: 'GET',
@@ -55,7 +55,7 @@ export class GatewayLoader {
 
       return config;
     } catch (error) {
-      console.error('Failed to load gateway config from API:', error);
+      console.error('Failed to load gateway config from toran API:', error);
 
       // If we have a stale cache entry, return it as fallback
       const stale = configCache.get(subdomain);

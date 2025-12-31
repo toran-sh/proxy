@@ -16,7 +16,7 @@ export const config = {
 export default async function handler(request: Request): Promise<Response> {
   // Build environment from process.env
   const env: Env = {
-    WWW_API_URL: process.env.WWW_API_URL || '',
+    TORAN_API_URL: process.env.TORAN_API_URL || '',
     REDIS_URL: process.env.REDIS_URL,
     ENVIRONMENT: process.env.ENVIRONMENT || 'production',
   };

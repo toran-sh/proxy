@@ -5,7 +5,7 @@ This guide covers deploying the Toran Proxy to Vercel Edge Runtime.
 ## Prerequisites
 
 1. A Vercel account (free tier works)
-2. A deployed toran-www instance with required API endpoints
+2. A deployed toran-api instance with required API endpoints
 3. (Optional) An Upstash Redis database for response caching
 
 ## Environment Variables
@@ -14,7 +14,7 @@ This guide covers deploying the Toran Proxy to Vercel Edge Runtime.
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `WWW_API_URL` | URL of your toran-www deployment | `https://toran-www.vercel.app` |
+| `TORAN_API_URL` | URL of your toran API deployment | `https://toran-api.vercel.app` |
 
 ### Optional
 
@@ -63,7 +63,7 @@ vercel --prod
 3. **Add Environment Variables:**
    - In project settings, go to "Environment Variables"
    - Add the required variables:
-     - `WWW_API_URL` (Production, Preview, Development)
+     - `TORAN_API_URL` (Production, Preview, Development)
      - `REDIS_URL` (optional)
      - `REDIS_TOKEN` (optional - for Upstash)
 
@@ -154,18 +154,18 @@ Use Vercel's environment scopes:
 
 Example:
 ```bash
-# Production WWW API
-WWW_API_URL=https://toran-www-production.vercel.app
+# Production toran API
+TORAN_API_URL=https://toran-api-production.vercel.app
 
-# Preview WWW API
-WWW_API_URL=https://toran-www-preview.vercel.app
+# Preview toran API
+TORAN_API_URL=https://toran-api-preview.vercel.app
 ```
 
 ## Troubleshooting
 
-### Error: "WWW API URL not configured"
+### Error: "toran API URL not configured"
 
-**Cause:** `WWW_API_URL` environment variable is not set.
+**Cause:** `TORAN_API_URL` environment variable is not set.
 
 **Solution:**
 1. Check environment variables in Vercel Dashboard
@@ -174,12 +174,12 @@ WWW_API_URL=https://toran-www-preview.vercel.app
 
 ### Error: "Gateway not found"
 
-**Cause:** WWW API returned 404 or is not accessible.
+**Cause:** toran API returned 404 or is not accessible.
 
 **Solution:**
-1. Verify `WWW_API_URL` is correct
+1. Verify `TORAN_API_URL` is correct
 2. Test the endpoint: `curl https://your-www-api.com/api/gateways/test`
-3. Check WWW API logs for errors
+3. Check toran API logs for errors
 4. Ensure the subdomain exists in your database
 
 ### Response caching not working
@@ -205,9 +205,9 @@ WWW_API_URL=https://toran-www-preview.vercel.app
 
 ## Production Checklist
 
-- [ ] Environment variables configured (`WWW_API_URL` required)
+- [ ] Environment variables configured (`TORAN_API_URL` required)
 - [ ] Custom domain configured and DNS propagated
-- [ ] WWW API endpoints tested and working
+- [ ] toran API endpoints tested and working
 - [ ] Redis configured (optional - only if using response caching)
 - [ ] Logs monitored for errors
 - [ ] Rate limiting configured (if needed)
