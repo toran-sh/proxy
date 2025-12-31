@@ -60,16 +60,3 @@ export interface CachedResponse {
   cachedAt: number;
   ttl: number;
 }
-
-export type Runtime = 'node' | 'vercel' | 'cloudflare';
-
-export interface Env {
-  MONGODB_URI?: string;
-  MONGODB_DATABASE?: string;
-  REDIS_URL?: string;
-  MONGODB_DATA_API_URL?: string;
-  MONGODB_DATA_API_KEY?: string;
-  UPSTASH_REDIS_URL?: string;
-  UPSTASH_REDIS_TOKEN?: string;
-  PROXY_CONFIG?: string;
-}

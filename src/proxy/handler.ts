@@ -1,5 +1,5 @@
 import type { Context } from 'hono';
-import type { UpstreamConfig, CachedResponse, Runtime, Env } from '../types/index.js';
+import type { UpstreamConfig, CachedResponse } from '../types/index.js';
 import { filterRequestHeaders, filterResponseHeaders, addForwardedHeaders } from './headers.js';
 import { buildUpstreamUrl } from '../routing/subdomain.js';
 import { findMatchingCacheRule, generateCacheKey } from '../cache/matcher.js';
@@ -11,8 +11,6 @@ export interface ProxyContext {
   subdomain: string;
   upstream: UpstreamConfig;
   cleanUrl: URL;
-  runtime: Runtime;
-  env?: Env;
 }
 
 export async function proxyRequest(
@@ -22,7 +20,7 @@ export async function proxyRequest(
   const startTime = Date.now();
   const config = getConfig();
 
-  const { subdomain, upstream, cleanUrl, runtime, env } = ctx;
+  const { subdomain, upstream, cleanUrl } = ctx;
   const method = c.req.method;
   const path = cleanUrl.pathname;
 
@@ -71,7 +69,7 @@ export async function proxyRequest(
 
   if (matchingRule && method === 'GET') {
     const cacheKey = generateCacheKey(subdomain, method, path, query, requestHeaders, matchingRule);
-    const cachedResponse = await getFromCache(runtime, cacheKey, env);
+    const cachedResponse = await getFromCache(cacheKey);
 
     if (cachedResponse) {
       cached = true;
@@ -94,7 +92,7 @@ export async function proxyRequest(
           cachedAt: Date.now(),
           ttl: matchingRule.ttl,
         };
-        await setInCache(runtime, cacheKey, cacheData, matchingRule.ttl, env);
+        await setInCache(cacheKey, cacheData, matchingRule.ttl);
       }
     }
   } else {
@@ -118,7 +116,7 @@ export async function proxyRequest(
     });
 
     if (shouldLog) {
-      await logRequest(runtime, {
+      await logRequest({
         timestamp: new Date(),
         subdomain,
         request: {
@@ -136,7 +134,7 @@ export async function proxyRequest(
         },
         duration,
         upstream: upstream.target,
-      }, env);
+      });
     }
   }
 

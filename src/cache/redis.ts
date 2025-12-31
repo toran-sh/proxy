@@ -1,21 +1,11 @@
-import type { Runtime, CachedResponse, Env } from '../types/index.js';
+import Redis from 'ioredis';
+import type { CachedResponse } from '../types/index.js';
 
-let redisClient: unknown = null;
-let upstashClient: unknown = null;
+let redisClient: Redis | null = null;
 
-interface RedisLike {
-  get(key: string): Promise<string | null>;
-  set(key: string, value: string, mode: string, ttl: number): Promise<unknown>;
-  setex(key: string, ttl: number, value: string): Promise<unknown>;
-}
-
-async function getRedisClient(runtime: Runtime): Promise<RedisLike | null> {
-  if (runtime === 'cloudflare') {
-    return null;
-  }
-
+function getRedisClient(): Redis | null {
   if (redisClient) {
-    return redisClient as RedisLike;
+    return redisClient;
   }
 
   const url = process.env.REDIS_URL;
@@ -25,66 +15,17 @@ async function getRedisClient(runtime: Runtime): Promise<RedisLike | null> {
   }
 
   try {
-    const Redis = (await import('ioredis')).default;
     redisClient = new Redis(url);
-    return redisClient as RedisLike;
+    return redisClient;
   } catch (e) {
     console.error('Failed to connect to Redis:', e);
     return null;
   }
 }
 
-interface UpstashRedis {
-  get<T>(key: string): Promise<T | null>;
-  set(key: string, value: string, options?: { ex?: number }): Promise<unknown>;
-}
-
-async function getUpstashClient(env: Env): Promise<UpstashRedis | null> {
-  if (upstashClient) {
-    return upstashClient as UpstashRedis;
-  }
-
-  const url = env.UPSTASH_REDIS_URL;
-  const token = env.UPSTASH_REDIS_TOKEN;
-
-  if (!url || !token) {
-    console.warn('Upstash credentials not set, caching disabled');
-    return null;
-  }
-
+export async function getFromCache(key: string): Promise<CachedResponse | null> {
   try {
-    const { Redis } = await import('@upstash/redis');
-    upstashClient = new Redis({ url, token });
-    return upstashClient as UpstashRedis;
-  } catch (e) {
-    console.error('Failed to create Upstash client:', e);
-    return null;
-  }
-}
-
-export async function getFromCache(
-  runtime: Runtime,
-  key: string,
-  env?: Env
-): Promise<CachedResponse | null> {
-  try {
-    if (runtime === 'cloudflare') {
-      if (!env) return null;
-      const client = await getUpstashClient(env);
-      if (!client) return null;
-
-      const data = await client.get<CachedResponse>(key);
-      if (!data) return null;
-
-      // Check if expired
-      if (data.cachedAt + data.ttl * 1000 < Date.now()) {
-        return null;
-      }
-
-      return data;
-    }
-
-    const client = await getRedisClient(runtime);
+    const client = getRedisClient();
     if (!client) return null;
 
     const data = await client.get(key);
@@ -105,23 +46,12 @@ export async function getFromCache(
 }
 
 export async function setInCache(
-  runtime: Runtime,
   key: string,
   data: CachedResponse,
-  ttl: number,
-  env?: Env
+  ttl: number
 ): Promise<void> {
   try {
-    if (runtime === 'cloudflare') {
-      if (!env) return;
-      const client = await getUpstashClient(env);
-      if (!client) return;
-
-      await client.set(key, JSON.stringify(data), { ex: ttl });
-      return;
-    }
-
-    const client = await getRedisClient(runtime);
+    const client = getRedisClient();
     if (!client) return;
 
     await client.setex(key, ttl, JSON.stringify(data));
@@ -132,7 +62,7 @@ export async function setInCache(
 
 export async function closeRedisConnection(): Promise<void> {
   if (redisClient) {
-    await (redisClient as { quit(): Promise<void> }).quit();
+    await redisClient.quit();
     redisClient = null;
   }
 }

@@ -1,7 +1,7 @@
 import { handle } from 'hono/vercel';
 import { createApp } from './index.js';
 
-const app = createApp('vercel');
+const app = createApp();
 
 export const GET = handle(app);
 export const POST = handle(app);

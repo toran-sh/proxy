@@ -1,42 +1,25 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import type { Runtime, Env } from './types/index.js';
-import { loadConfig, getConfig, setConfig } from './config/loader.js';
+import { loadConfig, getConfig } from './config/loader.js';
 import { extractSubdomain } from './routing/subdomain.js';
 import { proxyRequest } from './proxy/handler.js';
 
-type HonoEnv = {
-  Bindings: Env;
-  Variables: {
-    runtime: Runtime;
-  };
-};
-
-export function createApp(runtime: Runtime) {
-  const app = new Hono<HonoEnv>();
+export function createApp() {
+  const app = new Hono();
 
   // Enable CORS
   app.use('*', cors());
 
-  // Set runtime in context
-  app.use('*', async (c, next) => {
-    c.set('runtime', runtime);
-    await next();
-  });
-
   // Health check endpoint
   app.get('/health', (c) => {
-    return c.json({ status: 'ok', runtime });
+    return c.json({ status: 'ok' });
   });
 
   // Main proxy handler
   app.all('*', async (c) => {
-    const currentRuntime = c.get('runtime');
-
     // Load config if not already loaded
     try {
-      const envConfig = c.env?.PROXY_CONFIG;
-      await loadConfig(currentRuntime, envConfig);
+      loadConfig();
     } catch (e) {
       console.error('Failed to load config:', e);
       return c.json({ error: 'Configuration error' }, 500);
@@ -63,8 +46,6 @@ export function createApp(runtime: Runtime) {
         subdomain: result.subdomain,
         upstream: result.upstream,
         cleanUrl: result.cleanUrl,
-        runtime: currentRuntime,
-        env: c.env,
       });
     } catch (e) {
       console.error('Proxy error:', e);
@@ -81,5 +62,5 @@ export function createApp(runtime: Runtime) {
   return app;
 }
 
-export { loadConfig, setConfig, getConfig };
+export { loadConfig, getConfig } from './config/loader.js';
 export type { ProxyConfig, UpstreamConfig, CacheRule } from './types/index.js';
