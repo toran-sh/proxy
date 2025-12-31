@@ -1,18 +1,16 @@
 {
   "version": 2,
-  "regions": ["iad1"],
-  "env": {
-    "TORAN_API_URL": "@www-api-url",
-    "REDIS_URL": "@redis-url"
-  },
-  "build": {
-    "env": {
-    }
-  },
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/api/proxy"
+      "destination": "/api"
     }
-  ]
+  ],
+  "functions": {
+    "api/**/*.ts": {
+      "runtime": "@vercel/node@3"
+    }
+  }
 }

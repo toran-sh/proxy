@@ -1,0 +1,82 @@
+{
+  "upstreams": {
+    "api": {
+      "target": "https://api.example.com",
+      "cacheRules": [
+        {
+          "match": {
+            "path": "/v1/products/*",
+            "method": "GET"
+          },
+          "ttl": 3600
+        },
+        {
+          "match": {
+            "path": "/v1/categories",
+            "method": "GET",
+            "query": {
+              "format": "json"
+            }
+          },
+          "ttl": 7200
+        }
+      ],
+      "headers": {
+        "add": {
+          "X-Proxy": "toran",
+          "X-Forwarded-By": "toran-proxy"
+        },
+        "remove": ["X-Internal-Token"]
+      }
+    },
+    "cdn": {
+      "target": "https://cdn.example.com",
+      "cacheRules": [
+        {
+          "match": {
+            "path": "**/*.jpg"
+          },
+          "ttl": 86400
+        },
+        {
+          "match": {
+            "path": "**/*.png"
+          },
+          "ttl": 86400
+        },
+        {
+          "match": {
+            "path": "**/*.webp"
+          },
+          "ttl": 86400
+        },
+        {
+          "match": {
+            "path": "**/*.css"
+          },
+          "ttl": 604800
+        },
+        {
+          "match": {
+            "path": "**/*.js"
+          },
+          "ttl": 604800
+        }
+      ]
+    },
+    "auth": {
+      "target": "https://auth.example.com",
+      "cacheRules": [],
+      "headers": {
+        "add": {
+          "X-Auth-Proxy": "true"
+        }
+      }
+    }
+  },
+  "logging": {
+    "enabled": true,
+    "excludePaths": ["/health", "/metrics", "/favicon.ico"]
+  },
+  "baseDomain": "toran.sh"
+}

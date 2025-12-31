@@ -1,11 +1,8 @@
-node_modules
+node_modules/
+dist/
 .env
 .env.local
-.env.production
-.vercel
-dist
+.wrangler/
+.vercel/
 *.log
 .DS_Store
-wrangler.toml
-.wrangler
-.dev.vars

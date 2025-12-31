@@ -1,20 +1,25 @@
 name = "toran-proxy"
-main = "src/worker.ts"
-compatibility_date = "2024-12-01"
+main = "src/entry-cloudflare.ts"
+compatibility_date = "2024-01-01"
 
-# Environment variables
 [vars]
-ENVIRONMENT = "production"
-# TORAN_API_URL - Required: Admin/toran API endpoint (set with: wrangler secret put TORAN_API_URL)
-# REDIS_URL - Optional: Redis URL for caching with embedded credentials (set with: wrangler secret put REDIS_URL)
-#   Format: https://default:token@host or redis://user:password@host:port
+# Set your proxy config as JSON string here or use wrangler secret
+# PROXY_CONFIG = '{"upstreams": {...}}'
 
-# Routes - Configure after domain is added to Cloudflare
-# routes = [
-#   { pattern = "*.toran.dev/*", zone_name = "toran.dev" }
-# ]
+# For MongoDB Atlas Data API
+# MONGODB_DATA_API_URL = "https://data.mongodb-api.com/app/data-xxx/endpoint/data/v1"
+# MONGODB_DATABASE = "toran_proxy"
 
-# Development environment
-[env.dev]
-name = "toran-proxy-dev"
-routes = []
+# For Upstash Redis
+# UPSTASH_REDIS_URL = "https://xxx.upstash.io"
+
+# Use secrets for sensitive values:
+# wrangler secret put MONGODB_DATA_API_KEY
+# wrangler secret put UPSTASH_REDIS_TOKEN
+# wrangler secret put PROXY_CONFIG
+
+[build]
+command = "npm run build"
+
+# Optional: Enable node compatibility for some npm packages
+# node_compat = true
