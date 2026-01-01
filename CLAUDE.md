@@ -1,14 +1,13 @@
 # Toran Proxy
 
-A reverse proxy service built with Hono + TypeScript that runs on Node.js and Vercel.
+API Accelerator & Debugger - A reverse proxy service built with Hono + TypeScript.
 
 ## Quick Commands
 
 ```bash
-npm run dev          # Local development with hot reload
-npm run build        # TypeScript compilation
-npm run start        # Run compiled app
-npm run deploy:vercel # Deploy to Vercel
+npm run dev    # Local development with hot reload
+npm run build  # TypeScript compilation
+npm run start  # Run compiled app
 ```
 
 ## Architecture
@@ -79,12 +78,8 @@ Supports pattern matching on:
 MONGODB_URI=mongodb+srv://...
 MONGODB_DATABASE=toran_proxy
 REDIS_URL=redis://...
+PORT=3000
 ```
-
-## Entry Points
-
-- `src/entry-node.ts` - Node.js with `@hono/node-server`
-- `src/entry-vercel.ts` - Vercel with `hono/vercel` adapter
 
 ## Response Headers
 
