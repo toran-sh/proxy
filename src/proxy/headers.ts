@@ -56,6 +56,12 @@ export function filterRequestHeaders(
   return filtered;
 }
 
+// Headers to strip from upstream responses
+const STRIP_RESPONSE_HEADERS = new Set([
+  'x-powered-by',
+  'server',
+]);
+
 export function filterResponseHeaders(headers: Headers): Headers {
   const filtered = new Headers();
 
@@ -69,6 +75,11 @@ export function filterResponseHeaders(headers: Headers): Headers {
 
     // Skip content-encoding as we may need to handle decompression
     if (keyLower === 'content-encoding') {
+      return;
+    }
+
+    // Strip upstream server identification headers
+    if (STRIP_RESPONSE_HEADERS.has(keyLower)) {
       return;
     }
 
