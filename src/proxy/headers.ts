@@ -57,7 +57,7 @@ export function filterRequestHeaders(
 }
 
 // Headers to strip from upstream responses
-const STRIP_RESPONSE_HEADERS = new Set([
+const STRIP_RESPONSE_HEADERS = new Set<string>([
 ]);
 
 export function filterResponseHeaders(headers: Headers): Headers {
