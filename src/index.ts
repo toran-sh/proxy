@@ -21,14 +21,46 @@ function addCorsHeaders(response: Response): Response {
   });
 }
 
+// In-memory config cache
+interface CachedConfig {
+  config: UpstreamConfig;
+  expiresAt: number;
+}
+
+const configCache = new Map<string, CachedConfig>();
+
+function parseMaxAge(cacheControl: string | null): number | null {
+  if (!cacheControl) return null;
+  const match = cacheControl.match(/max-age=(\d+)/);
+  return match ? parseInt(match[1], 10) : null;
+}
+
 async function fetchConfig(subdomain: string): Promise<UpstreamConfig | null> {
+  // Check cache first
+  const cached = configCache.get(subdomain);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.config;
+  }
+
   try {
     const res = await fetch(`${process.env.TORAN_API_URL}/api/${subdomain}/configuration`);
     if (!res.ok) {
       console.error(`Failed to fetch config for ${subdomain}: ${res.status}`);
       return null;
     }
-    return await res.json() as UpstreamConfig;
+
+    const config = await res.json() as UpstreamConfig;
+
+    // Cache based on Cache-Control header
+    const maxAge = parseMaxAge(res.headers.get('cache-control'));
+    if (maxAge && maxAge > 0) {
+      configCache.set(subdomain, {
+        config,
+        expiresAt: Date.now() + maxAge * 1000,
+      });
+    }
+
+    return config;
   } catch (e) {
     console.error(`Error fetching config for ${subdomain}:`, e);
     return null;
