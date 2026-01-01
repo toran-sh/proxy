@@ -25,7 +25,7 @@ async function createVercelKvClient(): Promise<CacheClient> {
 
 async function createRedisClient(): Promise<CacheClient> {
   const { default: Redis } = await import('ioredis');
-  const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+  const redis = new Redis(process.env.REDIS_URL);
 
   return {
     async get<T>(key: string): Promise<T | null> {
@@ -58,6 +58,7 @@ export async function getCache(): Promise<CacheClient | null> {
     if (hasVercelKv) {
       cacheClient = await createVercelKvClient();
     } else {
+      console.log('Using Redis for caching');
       cacheClient = await createRedisClient();
     }
     return cacheClient;
