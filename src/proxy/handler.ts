@@ -43,7 +43,7 @@ export async function proxyRequest(
   if (shouldCache && cacheKey) {
     const cache = await getCache();
     if (cache) {
-      const cached = await cache.get(cacheKey);
+      const cached = await cache.get<CachedResponse>(cacheKey);
       if (cached) {
         const duration = Date.now() - startTime;
         const outHeaders = new Headers();
