@@ -1,7 +1,7 @@
-import { handleRequest } from '../dist/index.js';
+import { handleRequest } from '../src/index.js';
 
 export const config = {
-  runtime: 'nodejs',
+  runtime: 'edge',
 };
 
 export default async function handler(request: Request): Promise<Response> {

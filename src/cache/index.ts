@@ -1,3 +1,5 @@
+declare const EdgeRuntime: string | undefined;
+
 export interface CachedResponse {
   status: number;
   headers: Record<string, string>;
@@ -23,8 +25,27 @@ async function createVercelKvClient(): Promise<CacheClient> {
   };
 }
 
+async function createUpstashClient(): Promise<CacheClient> {
+  const { Redis } = await import('@upstash/redis');
+  const redis = new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL!,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+  });
+
+  return {
+    async get<T>(key: string): Promise<T | null> {
+      return await redis.get<T>(key);
+    },
+    async set<T>(key: string, value: T, ttlSeconds: number): Promise<void> {
+      await redis.setex(key, ttlSeconds, value);
+    },
+  };
+}
+
 async function createRedisClient(): Promise<CacheClient> {
-  const { default: Redis } = await import('ioredis');
+  // Dynamic import to avoid bundling in Edge runtime
+  const ioredis = await import('ioredis');
+  const Redis = ioredis.default;
   const redis = new Redis(process.env.REDIS_URL!);
 
   return {
@@ -39,26 +60,36 @@ async function createRedisClient(): Promise<CacheClient> {
   };
 }
 
-function isVercel(): boolean {
-  return !!process.env.VERCEL;
+function isEdgeRuntime(): boolean {
+  // Edge runtime doesn't have full process.versions.node
+  return typeof EdgeRuntime !== 'undefined' || !!process.env.VERCEL_EDGE;
 }
 
 export async function getCache(): Promise<CacheClient | null> {
   if (cacheClient) return cacheClient;
 
-  // Check if caching is enabled (Vercel KV on Vercel, Redis elsewhere)
-  const hasVercelKv = isVercel() && process.env.KV_REST_API_URL;
-  const hasRedis = !isVercel() && !!process.env.REDIS_URL;
+  const hasVercelKv = !!process.env.KV_REST_API_URL;
+  const hasUpstash = !!process.env.UPSTASH_REDIS_REST_URL && !!process.env.UPSTASH_REDIS_REST_TOKEN;
+  const hasRedis = !!process.env.REDIS_URL;
 
-  if (!hasVercelKv && !hasRedis) {
+  // No cache configured
+  if (!hasVercelKv && !hasUpstash && !hasRedis) {
     return null;
   }
 
   try {
     if (hasVercelKv) {
+      // Prefer Vercel KV when available
       cacheClient = await createVercelKvClient();
-    } else {
+    } else if (isEdgeRuntime() && hasUpstash) {
+      // Use Upstash on Edge when KV not available
+      cacheClient = await createUpstashClient();
+    } else if (!isEdgeRuntime() && hasRedis) {
+      // Use ioredis on Node.js runtime
       cacheClient = await createRedisClient();
+    } else if (hasUpstash) {
+      // Fallback to Upstash if nothing else works
+      cacheClient = await createUpstashClient();
     }
     return cacheClient;
   } catch (e) {

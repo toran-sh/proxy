@@ -4,5 +4,10 @@
   "buildCommand": "npm run build",
   "rewrites": [
     { "source": "/(.*)", "destination": "/api" }
-  ]
+  ],
+  "functions": {
+    "api/index.ts": {
+      "excludeFiles": "{node_modules/ioredis/**,node_modules/redis-parser/**}"
+    }
+  }
 }
