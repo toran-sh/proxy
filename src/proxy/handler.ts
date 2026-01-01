@@ -10,14 +10,18 @@ export interface ProxyContext {
 }
 
 async function sendLog(subdomain: string, log: RequestLog): Promise<void> {
+  const url = `${process.env.TORAN_API_URL}/api/${subdomain}/log`;
   try {
-    await fetch(`${process.env.TORAN_API_URL}/api/${subdomain}/log`, {
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(log),
     });
+    if (!res.ok) {
+      console.error('Log API error:', res.status, await res.text());
+    }
   } catch (e) {
-    console.error('Failed to send log:', e);
+    console.error('Failed to send log to', url, e);
   }
 }
 
@@ -53,8 +57,8 @@ export async function proxyRequest(
       if (cached) {
         const duration = Date.now() - startTime;
 
-        // Log cache hit
-        sendLog(subdomain, {
+        // Log cache hit (await to ensure it completes on Edge)
+        await sendLog(subdomain, {
           timestamp: new Date().toISOString(),
           request: {
             method,
@@ -143,8 +147,8 @@ export async function proxyRequest(
     }
   }
 
-  // Send log to API (fire and forget)
-  sendLog(subdomain, {
+  // Send log to API (await to ensure it completes on Edge)
+  await sendLog(subdomain, {
     timestamp: new Date().toISOString(),
     request: {
       method,
