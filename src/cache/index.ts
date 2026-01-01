@@ -5,8 +5,8 @@ export interface CachedResponse {
 }
 
 export interface CacheClient {
-  get(key: string): Promise<CachedResponse | null>;
-  set(key: string, value: CachedResponse, ttlSeconds: number): Promise<void>;
+  get<T>(key: string): Promise<T | null>;
+  set<T>(key: string, value: T, ttlSeconds: number): Promise<void>;
 }
 
 let cacheClient: CacheClient | null = null;
@@ -14,10 +14,10 @@ let cacheClient: CacheClient | null = null;
 async function createVercelKvClient(): Promise<CacheClient> {
   const { kv } = await import('@vercel/kv');
   return {
-    async get(key: string): Promise<CachedResponse | null> {
-      return await kv.get<CachedResponse>(key);
+    async get<T>(key: string): Promise<T | null> {
+      return await kv.get<T>(key);
     },
-    async set(key: string, value: CachedResponse, ttlSeconds: number): Promise<void> {
+    async set<T>(key: string, value: T, ttlSeconds: number): Promise<void> {
       await kv.set(key, value, { ex: ttlSeconds });
     },
   };
@@ -28,12 +28,12 @@ async function createRedisClient(): Promise<CacheClient> {
   const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
 
   return {
-    async get(key: string): Promise<CachedResponse | null> {
+    async get<T>(key: string): Promise<T | null> {
       const data = await redis.get(key);
       if (!data) return null;
-      return JSON.parse(data) as CachedResponse;
+      return JSON.parse(data) as T;
     },
-    async set(key: string, value: CachedResponse, ttlSeconds: number): Promise<void> {
+    async set<T>(key: string, value: T, ttlSeconds: number): Promise<void> {
       await redis.setex(key, ttlSeconds, JSON.stringify(value));
     },
   };

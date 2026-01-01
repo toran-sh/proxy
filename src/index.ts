@@ -1,5 +1,6 @@
 import { extractSubdomain } from './routing/subdomain.js';
 import { proxyRequest } from './proxy/handler.js';
+import { getCache } from './cache/index.js';
 import type { UpstreamConfig } from './types/index.js';
 
 function json(data: unknown, status = 200): Response {
@@ -21,18 +22,14 @@ function addCorsHeaders(response: Response): Response {
   });
 }
 
-// In-memory config cache
-interface CachedConfig {
-  config: UpstreamConfig;
-  expiresAt: number;
-}
-
-const configCache = new Map<string, CachedConfig>();
-
 function parseMaxAge(cacheControl: string | null): number | null {
   if (!cacheControl) return null;
   const match = cacheControl.match(/max-age=(\d+)/);
   return match ? parseInt(match[1], 10) : null;
+}
+
+function buildConfigCacheKey(subdomain: string): string {
+  return `toran:config:${subdomain}`;
 }
 
 interface ConfigResult {
@@ -41,10 +38,15 @@ interface ConfigResult {
 }
 
 async function fetchConfig(subdomain: string): Promise<ConfigResult | null> {
+  const cacheKey = buildConfigCacheKey(subdomain);
+
   // Check cache first
-  const cached = configCache.get(subdomain);
-  if (cached && cached.expiresAt > Date.now()) {
-    return { config: cached.config, cached: true };
+  const cache = await getCache();
+  if (cache) {
+    const cached = await cache.get<UpstreamConfig>(cacheKey);
+    if (cached) {
+      return { config: cached, cached: true };
+    }
   }
 
   try {
@@ -58,10 +60,9 @@ async function fetchConfig(subdomain: string): Promise<ConfigResult | null> {
 
     // Cache based on Cache-Control header
     const maxAge = parseMaxAge(res.headers.get('cache-control'));
-    if (maxAge && maxAge > 0) {
-      configCache.set(subdomain, {
-        config,
-        expiresAt: Date.now() + maxAge * 1000,
+    if (cache && maxAge && maxAge > 0) {
+      cache.set(cacheKey, config, maxAge).catch((e) => {
+        console.error('Failed to cache config:', e);
       });
     }
 
