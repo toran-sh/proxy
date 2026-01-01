@@ -1,81 +1,81 @@
 # Toran Proxy
 
-API Accelerator & Debugger - A lightweight reverse proxy with zero runtime dependencies.
+Lightweight reverse proxy with zero runtime dependencies. Fetches configuration and sends logs via the Toran API.
 
-## Quick Commands
+## Commands
 
 ```bash
-npm run dev    # Local development with hot reload
-npm run build  # TypeScript compilation
-npm run start  # Run compiled app
+npm run dev    # Development with hot reload
+npm run build  # Compile TypeScript
+npm run start  # Run production server
 ```
 
-## Architecture
+## Project Structure
 
 ```
-Request → Extract Subdomain → Fetch Config from API → Proxy to Upstream → Log to API
+src/
+├── server.ts           # Node.js HTTP server entry point
+├── index.ts            # Main request handler (handleRequest)
+├── routing/
+│   └── subdomain.ts    # Extract subdomain from host or ?_sub_domain_= param
+├── proxy/
+│   ├── handler.ts      # Proxy logic, sends logs to API
+│   └── headers.ts      # Header filtering (hop-by-hop, X-Forwarded-*)
+└── types/
+    └── index.ts        # TypeScript interfaces
 ```
 
-## How It Works
+## Request Flow
 
-1. **Subdomain Routing**: Extracts subdomain from host header or `?_sub_domain_=` param
-2. **Config from API**: Fetches upstream config from `https://toran.sh/api/<subdomain>/configuration`
-3. **Proxy Request**: Forwards request to configured upstream target
-4. **Log to API**: POSTs request/response log to `https://toran.sh/api/<subdomain>/log`
-
-## Key Files
-
-| File | Purpose |
-|------|---------|
-| `src/index.ts` | Main request handler, fetches config from API |
-| `src/server.ts` | Node.js HTTP server |
-| `src/proxy/handler.ts` | Proxies requests, sends logs to API |
-| `src/proxy/headers.ts` | Header filtering and forwarding |
-| `src/routing/subdomain.ts` | Subdomain extraction |
-
-## API Endpoints Used
-
-### GET /api/{subdomain}/configuration
-Returns upstream configuration:
-```json
-{
-  "target": "https://api.example.com",
-  "headers": {
-    "add": { "X-Proxy": "toran" },
-    "remove": ["X-Internal-Token"]
-  }
-}
 ```
-
-### POST /api/{subdomain}/log
-Receives request logs:
-```json
-{
-  "timestamp": "2024-01-01T00:00:00.000Z",
-  "request": {
-    "method": "GET",
-    "path": "/users",
-    "query": {},
-    "headers": {},
-    "body": null
-  },
-  "response": {
-    "status": 200,
-    "headers": {},
-    "bodySize": 1234
-  },
-  "duration": 150
-}
+1. Request arrives
+2. Extract subdomain (from host header or ?_sub_domain_= query param)
+3. GET ${TORAN_API_URL}/${subdomain}/configuration → upstream config
+4. Proxy request to upstream target
+5. POST ${TORAN_API_URL}/${subdomain}/log → send request/response log
+6. Return response with x-proxy-duration header
 ```
 
 ## Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| `PORT` | Server port (default: 3000) |
-| `TORAN_API_URL` | API base URL for config/logging |
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `TORAN_API_URL` | Yes | Base URL for config/logging API |
+| `PORT` | No | Server port (default: 3000) |
+
+## API Contracts
+
+### GET /{subdomain}/configuration
+Response:
+```json
+{
+  "target": "https://api.example.com",
+  "headers": {
+    "add": { "X-Custom": "value" },
+    "remove": ["X-Internal"]
+  }
+}
+```
+
+### POST /{subdomain}/log
+Request body:
+```json
+{
+  "timestamp": "2024-01-01T00:00:00.000Z",
+  "request": { "method": "GET", "path": "/", "query": {}, "headers": {} },
+  "response": { "status": 200, "headers": {}, "bodySize": 123 },
+  "duration": 45
+}
+```
 
 ## Deployment
+
+### Local Development
+```bash
+TORAN_API_URL=https://toran.sh/api npm run dev
+curl "http://localhost:3000/health"
+curl "http://localhost:3000/path?_sub_domain_=myapi"
+```
 
 ### Docker
 ```bash
@@ -85,12 +85,17 @@ docker run -p 8080:8080 -e TORAN_API_URL=https://toran.sh/api toran-proxy
 
 ### Fly.io
 ```bash
-fly launch        # First time setup
+fly launch
 fly secrets set TORAN_API_URL=https://toran.sh/api
-fly deploy        # Deploy
+fly deploy
 ```
 
-## Response Headers
+### Vercel
+Uses `api/index.ts` edge function. Set `TORAN_API_URL` in Vercel dashboard.
 
-The proxy adds:
-- `x-proxy-duration: Xms` - Request processing time
+## Key Implementation Details
+
+- **No runtime dependencies** - only devDependencies for TypeScript
+- **Uses Web APIs** - Request, Response, Headers, fetch (Node.js 18+)
+- **CORS enabled** - all origins allowed
+- **Fire-and-forget logging** - logs sent async, doesn't block response
