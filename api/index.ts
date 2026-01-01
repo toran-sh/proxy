@@ -1,4 +1,4 @@
-import { handleRequest } from '../src/index';
+import { handleRequest } from '../dist/index.js';
 
 export const config = {
   runtime: 'nodejs',
