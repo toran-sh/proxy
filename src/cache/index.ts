@@ -1,5 +1,3 @@
-declare const EdgeRuntime: string | undefined;
-
 export interface CachedResponse {
   status: number;
   headers: Record<string, string>;
@@ -49,31 +47,14 @@ async function createRedisClient(): Promise<CacheClient> {
   };
 }
 
-function isEdgeRuntime(): boolean {
-  return typeof EdgeRuntime !== 'undefined';
-}
-
 export async function getCache(): Promise<CacheClient | null> {
   if (cacheClient) return cacheClient;
 
-  const hasUpstash = !!process.env.UPSTASH_REDIS_REST_URL && !!process.env.UPSTASH_REDIS_REST_TOKEN;
-  const hasRedis = !!process.env.REDIS_URL;
-
-  if (!hasUpstash && !hasRedis) {
-    return null;
-  }
-
   try {
-    if (isEdgeRuntime()) {
-      // Edge runtime: use Upstash (HTTP)
-      if (hasUpstash) {
-        cacheClient = await createUpstashClient();
-      }
-    } else {
-      // Node.js runtime: use ioredis (TCP)
-      if (hasRedis) {
-        cacheClient = await createRedisClient();
-      }
+    if (process.env.UPSTASH_REDIS_REST_URL) {
+      cacheClient = await createUpstashClient();
+    } else if (process.env.REDIS_URL) {
+      cacheClient = await createRedisClient();
     }
     return cacheClient;
   } catch (e) {
