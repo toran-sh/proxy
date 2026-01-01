@@ -58,8 +58,6 @@ export function filterRequestHeaders(
 
 // Headers to strip from upstream responses
 const STRIP_RESPONSE_HEADERS = new Set([
-  'x-powered-by',
-  'server',
 ]);
 
 export function filterResponseHeaders(headers: Headers): Headers {
