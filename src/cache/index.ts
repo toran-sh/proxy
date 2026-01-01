@@ -23,18 +23,19 @@ async function createVercelKvClient(): Promise<CacheClient> {
   };
 }
 
-async function createRedisClient(): Promise<CacheClient> {
-  const { default: Redis } = await import('ioredis');
-  const redis = new Redis(process.env.REDIS_URL);
+async function createUpstashClient(): Promise<CacheClient> {
+  const { Redis } = await import('@upstash/redis');
+  const redis = new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL!,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+  });
 
   return {
     async get<T>(key: string): Promise<T | null> {
-      const data = await redis.get(key);
-      if (!data) return null;
-      return JSON.parse(data) as T;
+      return await redis.get<T>(key);
     },
     async set<T>(key: string, value: T, ttlSeconds: number): Promise<void> {
-      await redis.setex(key, ttlSeconds, JSON.stringify(value));
+      await redis.setex(key, ttlSeconds, value);
     },
   };
 }
@@ -46,11 +47,11 @@ function isVercel(): boolean {
 export async function getCache(): Promise<CacheClient | null> {
   if (cacheClient) return cacheClient;
 
-  // Check if caching is enabled (either Vercel KV or Redis URL configured)
+  // Check if caching is enabled (either Vercel KV or Upstash Redis configured)
   const hasVercelKv = isVercel() && process.env.KV_REST_API_URL;
-  const hasRedis = !!process.env.REDIS_URL;
+  const hasUpstash = !!process.env.UPSTASH_REDIS_REST_URL && !!process.env.UPSTASH_REDIS_REST_TOKEN;
 
-  if (!hasVercelKv && !hasRedis) {
+  if (!hasVercelKv && !hasUpstash) {
     return null;
   }
 
@@ -58,8 +59,7 @@ export async function getCache(): Promise<CacheClient | null> {
     if (hasVercelKv) {
       cacheClient = await createVercelKvClient();
     } else {
-      console.log('Using Redis for caching');
-      cacheClient = await createRedisClient();
+      cacheClient = await createUpstashClient();
     }
     return cacheClient;
   } catch (e) {
