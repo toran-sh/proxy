@@ -1,10 +1,8 @@
-import type { UpstreamConfig, CachedResponse } from '../types/index.js';
+import type { UpstreamConfig, RequestLog } from '../types/index.js';
 import { filterRequestHeaders, filterResponseHeaders, addForwardedHeaders } from './headers.js';
 import { buildUpstreamUrl } from '../routing/subdomain.js';
-import { findMatchingCacheRule, generateCacheKey } from '../cache/matcher.js';
-import { getFromCache, setInCache } from '../cache/redis.js';
-import { logRequest } from '../logging/mongodb.js';
-import { getConfig } from '../config/loader.js';
+
+const API_BASE = 'https://toran.sh/api';
 
 export interface ProxyContext {
   subdomain: string;
@@ -12,13 +10,23 @@ export interface ProxyContext {
   cleanUrl: URL;
 }
 
+async function sendLog(subdomain: string, log: RequestLog): Promise<void> {
+  try {
+    await fetch(`${API_BASE}/${subdomain}/log`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(log),
+    });
+  } catch (e) {
+    console.error('Failed to send log:', e);
+  }
+}
+
 export async function proxyRequest(
   request: Request,
   ctx: ProxyContext
 ): Promise<Response> {
   const startTime = Date.now();
-  const config = getConfig();
-
   const { subdomain, upstream, cleanUrl } = ctx;
   const method = request.method;
   const path = cleanUrl.pathname;
@@ -50,110 +58,7 @@ export async function proxyRequest(
     requestHeaders[key.toLowerCase()] = value;
   });
 
-  // Check cache
-  const matchingRule = findMatchingCacheRule(
-    upstream.cacheRules || [],
-    method,
-    path,
-    query,
-    requestHeaders,
-    parsedBody
-  );
-
-  let cached = false;
-  let responseStatus: number;
-  let responseHeaders: Record<string, string>;
-  let responseBody: string;
-
-  if (matchingRule && method === 'GET') {
-    const cacheKey = generateCacheKey(subdomain, method, path, query, requestHeaders, matchingRule);
-    const cachedResponse = await getFromCache(cacheKey);
-
-    if (cachedResponse) {
-      cached = true;
-      responseStatus = cachedResponse.status;
-      responseHeaders = cachedResponse.headers;
-      responseBody = cachedResponse.body;
-    } else {
-      const result = await fetchFromUpstream(request, upstream, cleanUrl, requestBody);
-      responseStatus = result.status;
-      responseHeaders = result.headers;
-      responseBody = result.body;
-
-      if (responseStatus >= 200 && responseStatus < 400) {
-        const cacheData: CachedResponse = {
-          status: responseStatus,
-          headers: responseHeaders,
-          body: responseBody,
-          cachedAt: Date.now(),
-          ttl: matchingRule.ttl,
-        };
-        await setInCache(cacheKey, cacheData, matchingRule.ttl);
-      }
-    }
-  } else {
-    const result = await fetchFromUpstream(request, upstream, cleanUrl, requestBody);
-    responseStatus = result.status;
-    responseHeaders = result.headers;
-    responseBody = result.body;
-  }
-
-  const duration = Date.now() - startTime;
-
-  // Log the request/response
-  if (config.logging.enabled) {
-    const shouldLog = !config.logging.excludePaths?.some((p) => {
-      if (p.includes('*')) {
-        const regex = new RegExp('^' + p.replace(/\*/g, '.*') + '$');
-        return regex.test(path);
-      }
-      return p === path;
-    });
-
-    if (shouldLog) {
-      await logRequest({
-        timestamp: new Date(),
-        subdomain,
-        request: {
-          method,
-          path,
-          query,
-          headers: requestHeaders,
-          body: parsedBody,
-        },
-        response: {
-          status: responseStatus,
-          headers: responseHeaders,
-          bodySize: responseBody.length,
-          cached,
-        },
-        duration,
-        upstream: upstream.target,
-      });
-    }
-  }
-
-  // Build response
-  const headers = new Headers();
-  for (const [key, value] of Object.entries(responseHeaders)) {
-    headers.set(key, value);
-  }
-
-  headers.set('x-proxy-cache', cached ? 'HIT' : 'MISS');
-  headers.set('x-proxy-duration', `${duration}ms`);
-
-  return new Response(responseBody, {
-    status: responseStatus,
-    headers,
-  });
-}
-
-async function fetchFromUpstream(
-  request: Request,
-  upstream: UpstreamConfig,
-  cleanUrl: URL,
-  body: string | null
-): Promise<{ status: number; headers: Record<string, string>; body: string }> {
+  // Fetch from upstream
   const upstreamUrl = buildUpstreamUrl(cleanUrl, upstream);
 
   const headers = filterRequestHeaders(request.headers, upstream.headers);
@@ -167,23 +72,47 @@ async function fetchFromUpstream(
     headers,
   };
 
-  if (body && request.method !== 'GET' && request.method !== 'HEAD') {
-    requestInit.body = body;
+  if (requestBody && method !== 'GET' && method !== 'HEAD') {
+    requestInit.body = requestBody;
   }
 
   const response = await fetch(upstreamUrl, requestInit);
-
   const responseBody = await response.text();
 
-  const filteredHeaders = filterResponseHeaders(response.headers);
-  const headersObj: Record<string, string> = {};
-  filteredHeaders.forEach((value, key) => {
-    headersObj[key] = value;
+  const responseHeaders: Record<string, string> = {};
+  filterResponseHeaders(response.headers).forEach((value, key) => {
+    responseHeaders[key] = value;
   });
 
-  return {
+  const duration = Date.now() - startTime;
+
+  // Send log to API (fire and forget)
+  sendLog(subdomain, {
+    timestamp: new Date().toISOString(),
+    request: {
+      method,
+      path,
+      query,
+      headers: requestHeaders,
+      body: parsedBody,
+    },
+    response: {
+      status: response.status,
+      headers: responseHeaders,
+      bodySize: responseBody.length,
+    },
+    duration,
+  });
+
+  // Build response
+  const outHeaders = new Headers();
+  for (const [key, value] of Object.entries(responseHeaders)) {
+    outHeaders.set(key, value);
+  }
+  outHeaders.set('x-proxy-duration', `${duration}ms`);
+
+  return new Response(responseBody, {
     status: response.status,
-    headers: headersObj,
-    body: responseBody,
-  };
+    headers: outHeaders,
+  });
 }

@@ -8,11 +8,6 @@
     "build": "tsc",
     "start": "node dist/server.js"
   },
-  "dependencies": {
-    "ioredis": "^5.4.0",
-    "mongodb": "^6.10.0",
-    "minimatch": "^10.0.0"
-  },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "tsx": "^4.19.0",

@@ -1,6 +1,6 @@
 # Toran Proxy
 
-API Accelerator & Debugger - A lightweight reverse proxy service built with plain TypeScript.
+API Accelerator & Debugger - A lightweight reverse proxy with zero runtime dependencies.
 
 ## Quick Commands
 
@@ -13,76 +13,62 @@ npm run start  # Run compiled app
 ## Architecture
 
 ```
-Request → Subdomain Router → Cache Check → Upstream Fetch → Response
-                                 ↓              ↓
-                            Redis Cache    MongoDB Log
+Request → Extract Subdomain → Fetch Config from API → Proxy to Upstream → Log to API
 ```
 
-## Subdomain Routing
+## How It Works
 
-- **Production**: Subdomain from Host header (`api.toran.sh` → config key `api`)
-- **Localhost**: Query param `?_sub_domain_=api` determines config
+1. **Subdomain Routing**: Extracts subdomain from host header or `?_sub_domain_=` param
+2. **Config from API**: Fetches upstream config from `https://toran.sh/api/<subdomain>/configuration`
+3. **Proxy Request**: Forwards request to configured upstream target
+4. **Log to API**: POSTs request/response log to `https://toran.sh/api/<subdomain>/log`
 
 ## Key Files
 
 | File | Purpose |
 |------|---------|
-| `src/index.ts` | Main Hono app factory |
-| `src/proxy/handler.ts` | Core proxy logic - forwards requests, handles caching/logging |
-| `src/routing/subdomain.ts` | Extracts subdomain from host or `_sub_domain_` param |
-| `src/cache/matcher.ts` | Pattern matching for cache rules (glob, headers, query, body) |
-| `src/cache/redis.ts` | Redis wrapper using ioredis |
-| `src/logging/mongodb.ts` | MongoDB logger using native driver |
-| `src/config/loader.ts` | Loads config from file or PROXY_CONFIG env var |
-| `config/proxy.json` | Proxy configuration with upstreams and cache rules |
+| `src/index.ts` | Main request handler, fetches config from API |
+| `src/server.ts` | Node.js HTTP server |
+| `src/proxy/handler.ts` | Proxies requests, sends logs to API |
+| `src/proxy/headers.ts` | Header filtering and forwarding |
+| `src/routing/subdomain.ts` | Subdomain extraction |
 
-## Configuration Schema
+## API Endpoints Used
 
+### GET /api/{subdomain}/configuration
+Returns upstream configuration:
 ```json
 {
-  "upstreams": {
-    "api": {
-      "target": "https://api.example.com",
-      "cacheRules": [
-        {
-          "match": { "path": "/v1/*", "method": "GET" },
-          "ttl": 3600
-        }
-      ],
-      "headers": {
-        "add": { "X-Proxy": "toran" },
-        "remove": ["X-Internal-Token"]
-      }
-    }
-  },
-  "logging": {
-    "enabled": true,
-    "excludePaths": ["/health"]
-  },
-  "baseDomain": "toran.sh"
+  "target": "https://api.example.com",
+  "headers": {
+    "add": { "X-Proxy": "toran" },
+    "remove": ["X-Internal-Token"]
+  }
 }
 ```
 
-## Cache Rule Matching
-
-Supports pattern matching on:
-- `path`: Glob patterns (`/api/*`, `**/*.json`)
-- `method`: Exact match (`GET`, `POST`)
-- `headers`: Key-value with wildcards
-- `query`: Query param patterns
-- `body`: JSON path matching for request bodies
-
-## Environment Variables
-
-```
-MONGODB_URI=mongodb+srv://...
-MONGODB_DATABASE=toran_proxy
-REDIS_URL=redis://...
-PORT=3000
+### POST /api/{subdomain}/log
+Receives request logs:
+```json
+{
+  "timestamp": "2024-01-01T00:00:00.000Z",
+  "request": {
+    "method": "GET",
+    "path": "/users",
+    "query": {},
+    "headers": {},
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {},
+    "bodySize": 1234
+  },
+  "duration": 150
+}
 ```
 
 ## Response Headers
 
 The proxy adds:
-- `x-proxy-cache: HIT|MISS` - Whether response was served from cache
-- `x-proxy-duration: Xms` - Total request processing time
+- `x-proxy-duration: Xms` - Request processing time

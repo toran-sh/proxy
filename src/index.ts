@@ -1,6 +1,8 @@
-import { loadConfig, getConfig } from './config/loader.js';
 import { extractSubdomain } from './routing/subdomain.js';
 import { proxyRequest } from './proxy/handler.js';
+import type { UpstreamConfig } from './types/index.js';
+
+const API_BASE = 'https://toran.sh/api';
 
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -21,6 +23,20 @@ function addCorsHeaders(response: Response): Response {
   });
 }
 
+async function fetchConfig(subdomain: string): Promise<UpstreamConfig | null> {
+  try {
+    const res = await fetch(`${API_BASE}/${subdomain}/configuration`);
+    if (!res.ok) {
+      console.error(`Failed to fetch config for ${subdomain}: ${res.status}`);
+      return null;
+    }
+    return await res.json() as UpstreamConfig;
+  } catch (e) {
+    console.error(`Error fetching config for ${subdomain}:`, e);
+    return null;
+  }
+}
+
 export async function handleRequest(request: Request): Promise<Response> {
   const url = new URL(request.url);
 
@@ -34,32 +50,35 @@ export async function handleRequest(request: Request): Promise<Response> {
     return addCorsHeaders(json({ status: 'ok' }));
   }
 
-  // Load config
-  try {
-    loadConfig();
-  } catch (e) {
-    console.error('Failed to load config:', e);
-    return addCorsHeaders(json({ error: 'Configuration error' }, 500));
-  }
+  // Extract subdomain
+  const subdomain = extractSubdomain(request);
 
-  const config = getConfig();
-
-  // Extract subdomain and find upstream
-  const result = extractSubdomain(request, config);
-
-  if (!result) {
+  if (!subdomain) {
     return addCorsHeaders(json({
-      error: 'Unknown subdomain or upstream not configured',
+      error: 'Unknown subdomain',
       hint: 'Use _sub_domain_ query parameter in localhost mode',
     }, 404));
   }
 
+  // Fetch config from API
+  const config = await fetchConfig(subdomain);
+
+  if (!config) {
+    return addCorsHeaders(json({
+      error: 'Configuration not found for subdomain',
+      subdomain,
+    }, 404));
+  }
+
+  // Remove _sub_domain_ from URL before proxying
+  url.searchParams.delete('_sub_domain_');
+
   // Proxy the request
   try {
     const response = await proxyRequest(request, {
-      subdomain: result.subdomain,
-      upstream: result.upstream,
-      cleanUrl: result.cleanUrl,
+      subdomain,
+      upstream: config,
+      cleanUrl: url,
     });
     return addCorsHeaders(response);
   } catch (e) {
@@ -70,6 +89,3 @@ export async function handleRequest(request: Request): Promise<Response> {
     }, 502));
   }
 }
-
-export { loadConfig, getConfig } from './config/loader.js';
-export type { ProxyConfig, UpstreamConfig, CacheRule } from './types/index.js';
