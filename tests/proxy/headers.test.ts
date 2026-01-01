@@ -5,7 +5,7 @@ import {
   headersToObject,
   objectToHeaders,
   addForwardedHeaders,
-} from './headers.js';
+} from '../../src/proxy/headers.js';
 
 describe('filterRequestHeaders', () => {
   it('removes hop-by-hop headers', () => {

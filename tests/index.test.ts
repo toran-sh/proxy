@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { handleRequest } from './index.js';
+import { handleRequest } from '../src/index.js';
 
 describe('handleRequest', () => {
   const originalFetch = global.fetch;

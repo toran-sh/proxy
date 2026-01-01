@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { extractSubdomain, buildUpstreamUrl } from './subdomain.js';
+import { extractSubdomain, buildUpstreamUrl } from '../../src/routing/subdomain.js';
 
 describe('extractSubdomain', () => {
   it('extracts subdomain from _sub_domain_ query parameter', () => {
