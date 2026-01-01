@@ -24,6 +24,7 @@ function addCorsHeaders(response: Response): Response {
 
 async function fetchConfig(subdomain: string): Promise<UpstreamConfig | null> {
   try {
+    console.log(`${env.TORAN_API_URL}/${subdomain}/configuration`)
     const res = await fetch(`${env.TORAN_API_URL}/${subdomain}/configuration`);
     if (!res.ok) {
       console.error(`Failed to fetch config for ${subdomain}: ${res.status}`);

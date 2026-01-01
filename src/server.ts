@@ -1,5 +1,21 @@
 import { createServer } from 'http';
+import { readFileSync, existsSync } from 'fs';
 import { handleRequest } from './index.js';
+
+// Load .env file if it exists
+const envPath = '.env';
+if (existsSync(envPath)) {
+  const envContent = readFileSync(envPath, 'utf-8');
+  for (const line of envContent.split('\n')) {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith('#')) {
+      const [key, ...valueParts] = trimmed.split('=');
+      if (key && valueParts.length > 0) {
+        process.env[key.trim()] = valueParts.join('=').trim().replace(/^["']|["']$/g, '');
+      }
+    }
+  }
+}
 
 const port = parseInt(process.env.PORT || '3000', 10);
 
