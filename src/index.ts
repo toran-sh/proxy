@@ -35,11 +35,16 @@ function parseMaxAge(cacheControl: string | null): number | null {
   return match ? parseInt(match[1], 10) : null;
 }
 
-async function fetchConfig(subdomain: string): Promise<UpstreamConfig | null> {
+interface ConfigResult {
+  config: UpstreamConfig;
+  cached: boolean;
+}
+
+async function fetchConfig(subdomain: string): Promise<ConfigResult | null> {
   // Check cache first
   const cached = configCache.get(subdomain);
   if (cached && cached.expiresAt > Date.now()) {
-    return cached.config;
+    return { config: cached.config, cached: true };
   }
 
   try {
@@ -60,7 +65,7 @@ async function fetchConfig(subdomain: string): Promise<UpstreamConfig | null> {
       });
     }
 
-    return config;
+    return { config, cached: false };
   } catch (e) {
     console.error(`Error fetching config for ${subdomain}:`, e);
     return null;
@@ -91,9 +96,9 @@ export async function handleRequest(request: Request): Promise<Response> {
   }
 
   // Fetch config from API
-  const config = await fetchConfig(subdomain);
+  const configResult = await fetchConfig(subdomain);
 
-  if (!config) {
+  if (!configResult) {
     return addCorsHeaders(json({
       error: 'Configuration not found for subdomain',
       subdomain,
@@ -107,10 +112,18 @@ export async function handleRequest(request: Request): Promise<Response> {
   try {
     const response = await proxyRequest(request, {
       subdomain,
-      upstream: config,
+      upstream: configResult.config,
       cleanUrl: url,
     });
-    return addCorsHeaders(response);
+
+    // Add config cache header
+    const headers = new Headers(response.headers);
+    headers.set('x-config-cache', configResult.cached ? 'HIT' : 'MISS');
+
+    return addCorsHeaders(new Response(response.body, {
+      status: response.status,
+      headers,
+    }));
   } catch (e) {
     console.error('Proxy error:', e);
     return addCorsHeaders(json({
