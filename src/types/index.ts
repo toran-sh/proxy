@@ -24,4 +24,5 @@ export interface RequestLog {
     bodySize: number;
   };
   duration: number;
+  cacheStatus?: 'HIT' | 'MISS';
 }

@@ -40,12 +40,37 @@ export async function proxyRequest(
   const shouldCache = method === 'GET' && upstream.cacheTtl && upstream.cacheTtl > 0;
   const cacheKey = shouldCache ? buildCacheKey(subdomain, method, cleanUrl) : null;
 
+  // Get request headers as object (needed for logging)
+  const requestHeaders: Record<string, string> = {};
+  request.headers.forEach((value, key) => {
+    requestHeaders[key.toLowerCase()] = value;
+  });
+
   if (shouldCache && cacheKey) {
     const cache = await getCache();
     if (cache) {
       const cached = await cache.get<CachedResponse>(cacheKey);
       if (cached) {
         const duration = Date.now() - startTime;
+
+        // Log cache hit
+        sendLog(subdomain, {
+          timestamp: new Date().toISOString(),
+          request: {
+            method,
+            path,
+            query,
+            headers: requestHeaders,
+          },
+          response: {
+            status: cached.status,
+            headers: cached.headers,
+            bodySize: cached.body.length,
+          },
+          duration,
+          cacheStatus: 'HIT',
+        });
+
         const outHeaders = new Headers();
         for (const [key, value] of Object.entries(cached.headers)) {
           outHeaders.set(key, value);
@@ -74,12 +99,6 @@ export async function proxyRequest(
       }
     }
   }
-
-  // Get request headers as object
-  const requestHeaders: Record<string, string> = {};
-  request.headers.forEach((value, key) => {
-    requestHeaders[key.toLowerCase()] = value;
-  });
 
   // Fetch from upstream
   const upstreamUrl = buildUpstreamUrl(cleanUrl, upstream);
@@ -140,6 +159,7 @@ export async function proxyRequest(
       bodySize: responseBody.length,
     },
     duration,
+    cacheStatus: shouldCache ? 'MISS' : undefined,
   });
 
   // Build response
