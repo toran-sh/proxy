@@ -1,6 +1,7 @@
 import type { UpstreamConfig, RequestLog } from '../types/index.js';
 import { filterRequestHeaders, filterResponseHeaders, addForwardedHeaders } from './headers.js';
 import { buildUpstreamUrl } from '../routing/subdomain.js';
+import { getCache, buildCacheKey, type CachedResponse } from '../cache/index.js';
 
 export interface ProxyContext {
   subdomain: string;
@@ -34,6 +35,30 @@ export async function proxyRequest(
   cleanUrl.searchParams.forEach((value, key) => {
     query[key] = value;
   });
+
+  // Check cache for GET requests with cacheTtl configured
+  const shouldCache = method === 'GET' && upstream.cacheTtl && upstream.cacheTtl > 0;
+  const cacheKey = shouldCache ? buildCacheKey(subdomain, method, cleanUrl) : null;
+
+  if (shouldCache && cacheKey) {
+    const cache = await getCache();
+    if (cache) {
+      const cached = await cache.get(cacheKey);
+      if (cached) {
+        const duration = Date.now() - startTime;
+        const outHeaders = new Headers();
+        for (const [key, value] of Object.entries(cached.headers)) {
+          outHeaders.set(key, value);
+        }
+        outHeaders.set('x-proxy-duration', `${duration}ms`);
+        outHeaders.set('x-cache', 'HIT');
+        return new Response(cached.body, {
+          status: cached.status,
+          headers: outHeaders,
+        });
+      }
+    }
+  }
 
   // Get request body if present
   let requestBody: string | null = null;
@@ -84,6 +109,21 @@ export async function proxyRequest(
 
   const duration = Date.now() - startTime;
 
+  // Store in cache if caching is enabled and response is successful
+  if (shouldCache && cacheKey && response.ok) {
+    const cache = await getCache();
+    if (cache) {
+      const cachedResponse: CachedResponse = {
+        status: response.status,
+        headers: responseHeaders,
+        body: responseBody,
+      };
+      cache.set(cacheKey, cachedResponse, upstream.cacheTtl!).catch((e) => {
+        console.error('Failed to cache response:', e);
+      });
+    }
+  }
+
   // Send log to API (fire and forget)
   sendLog(subdomain, {
     timestamp: new Date().toISOString(),
@@ -108,6 +148,9 @@ export async function proxyRequest(
     outHeaders.set(key, value);
   }
   outHeaders.set('x-proxy-duration', `${duration}ms`);
+  if (shouldCache) {
+    outHeaders.set('x-cache', 'MISS');
+  }
 
   return new Response(responseBody, {
     status: response.status,

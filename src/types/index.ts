@@ -6,6 +6,7 @@ export interface HeaderConfig {
 export interface UpstreamConfig {
   upstreamBaseUrl: string;
   headers?: HeaderConfig;
+  cacheTtl?: number;
 }
 
 export interface RequestLog {
