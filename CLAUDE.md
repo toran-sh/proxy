@@ -68,6 +68,28 @@ Receives request logs:
 }
 ```
 
+## Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `PORT` | Server port (default: 3000) |
+| `TORAN_API_URL` | API base URL for config/logging |
+
+## Deployment
+
+### Docker
+```bash
+docker build -t toran-proxy .
+docker run -p 8080:8080 -e TORAN_API_URL=https://toran.sh/api toran-proxy
+```
+
+### Fly.io
+```bash
+fly launch        # First time setup
+fly secrets set TORAN_API_URL=https://toran.sh/api
+fly deploy        # Deploy
+```
+
 ## Response Headers
 
 The proxy adds:
