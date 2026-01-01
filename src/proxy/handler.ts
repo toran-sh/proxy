@@ -1,4 +1,3 @@
-import type { Context } from 'hono';
 import type { UpstreamConfig, CachedResponse } from '../types/index.js';
 import { filterRequestHeaders, filterResponseHeaders, addForwardedHeaders } from './headers.js';
 import { buildUpstreamUrl } from '../routing/subdomain.js';
@@ -14,14 +13,14 @@ export interface ProxyContext {
 }
 
 export async function proxyRequest(
-  c: Context,
+  request: Request,
   ctx: ProxyContext
 ): Promise<Response> {
   const startTime = Date.now();
   const config = getConfig();
 
   const { subdomain, upstream, cleanUrl } = ctx;
-  const method = c.req.method;
+  const method = request.method;
   const path = cleanUrl.pathname;
 
   // Parse query params
@@ -35,20 +34,19 @@ export async function proxyRequest(
   let parsedBody: unknown = undefined;
 
   if (method !== 'GET' && method !== 'HEAD') {
-    requestBody = await c.req.text();
+    requestBody = await request.text();
     if (requestBody) {
       try {
         parsedBody = JSON.parse(requestBody);
       } catch {
-        // Not JSON, keep as string
         parsedBody = requestBody;
       }
     }
   }
 
-  // Get request headers as object for logging and cache matching
+  // Get request headers as object
   const requestHeaders: Record<string, string> = {};
-  c.req.raw.headers.forEach((value, key) => {
+  request.headers.forEach((value, key) => {
     requestHeaders[key.toLowerCase()] = value;
   });
 
@@ -77,13 +75,11 @@ export async function proxyRequest(
       responseHeaders = cachedResponse.headers;
       responseBody = cachedResponse.body;
     } else {
-      // Fetch from upstream
-      const result = await fetchFromUpstream(c, upstream, cleanUrl, requestBody);
+      const result = await fetchFromUpstream(request, upstream, cleanUrl, requestBody);
       responseStatus = result.status;
       responseHeaders = result.headers;
       responseBody = result.body;
 
-      // Cache the response if successful
       if (responseStatus >= 200 && responseStatus < 400) {
         const cacheData: CachedResponse = {
           status: responseStatus,
@@ -96,8 +92,7 @@ export async function proxyRequest(
       }
     }
   } else {
-    // No caching, fetch directly
-    const result = await fetchFromUpstream(c, upstream, cleanUrl, requestBody);
+    const result = await fetchFromUpstream(request, upstream, cleanUrl, requestBody);
     responseStatus = result.status;
     responseHeaders = result.headers;
     responseBody = result.body;
@@ -144,7 +139,6 @@ export async function proxyRequest(
     headers.set(key, value);
   }
 
-  // Add proxy headers
   headers.set('x-proxy-cache', cached ? 'HIT' : 'MISS');
   headers.set('x-proxy-duration', `${duration}ms`);
 
@@ -155,37 +149,32 @@ export async function proxyRequest(
 }
 
 async function fetchFromUpstream(
-  c: Context,
+  request: Request,
   upstream: UpstreamConfig,
   cleanUrl: URL,
   body: string | null
 ): Promise<{ status: number; headers: Record<string, string>; body: string }> {
   const upstreamUrl = buildUpstreamUrl(cleanUrl, upstream);
 
-  // Prepare headers
-  const headers = filterRequestHeaders(c.req.raw.headers, upstream.headers);
-  addForwardedHeaders(headers, c.req.raw);
+  const headers = filterRequestHeaders(request.headers, upstream.headers);
+  addForwardedHeaders(headers, request);
 
-  // Set the host header to the upstream host
   const targetUrl = new URL(upstream.target);
   headers.set('host', targetUrl.host);
 
-  // Make the request
   const requestInit: RequestInit = {
-    method: c.req.method,
+    method: request.method,
     headers,
   };
 
-  if (body && c.req.method !== 'GET' && c.req.method !== 'HEAD') {
+  if (body && request.method !== 'GET' && request.method !== 'HEAD') {
     requestInit.body = body;
   }
 
   const response = await fetch(upstreamUrl, requestInit);
 
-  // Get response body
   const responseBody = await response.text();
 
-  // Filter response headers
   const filteredHeaders = filterResponseHeaders(response.headers);
   const headersObj: Record<string, string> = {};
   filteredHeaders.forEach((value, key) => {

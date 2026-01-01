@@ -1,6 +1,6 @@
 # Toran Proxy
 
-API Accelerator & Debugger - A reverse proxy service built with Hono + TypeScript.
+API Accelerator & Debugger - A lightweight reverse proxy service built with plain TypeScript.
 
 ## Quick Commands
 

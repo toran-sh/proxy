@@ -1,12 +1,9 @@
-import { handle } from 'hono/vercel';
-import { createApp } from '../src/index.ts';
+import { handleRequest } from '../src/index';
 
-const app = createApp();
+export const config = {
+  runtime: 'edge',
+};
 
-export const GET = handle(app);
-export const POST = handle(app);
-export const PUT = handle(app);
-export const DELETE = handle(app);
-export const PATCH = handle(app);
-export const OPTIONS = handle(app);
-export const HEAD = handle(app);
+export default async function handler(request: Request): Promise<Response> {
+  return handleRequest(request);
+}
