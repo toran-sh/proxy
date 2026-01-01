@@ -4,9 +4,9 @@
   "description": "toran - API Accelerator & Debugger",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch --env-file=.env src/server.ts",
+    "dev": "tsx watch --env-file=.env.local src/server.ts",
     "build": "tsc",
-    "start": "node --env-file=.env dist/server.js"
+    "start": "node dist/server.js"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

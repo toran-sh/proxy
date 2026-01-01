@@ -11,7 +11,7 @@ export interface ProxyContext {
 
 async function sendLog(subdomain: string, log: RequestLog): Promise<void> {
   try {
-    await fetch(`${env.TORAN_API_URL}/${subdomain}/log`, {
+    await fetch(`${env.TORAN_API_URL}/api/${subdomain}/log`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(log),
@@ -63,7 +63,7 @@ export async function proxyRequest(
   const headers = filterRequestHeaders(request.headers, upstream.headers);
   addForwardedHeaders(headers, request);
 
-  const targetUrl = new URL(upstream.target);
+  const targetUrl = new URL(upstream.upstreamBaseUrl);
   headers.set('host', targetUrl.host);
 
   const requestInit: RequestInit = {

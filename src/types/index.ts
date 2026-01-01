@@ -4,7 +4,7 @@ export interface HeaderConfig {
 }
 
 export interface UpstreamConfig {
-  target: string;
+  upstreamBaseUrl: string;
   headers?: HeaderConfig;
 }
 

@@ -20,9 +20,9 @@ export function extractSubdomain(request: Request): string | null {
 }
 
 export function buildUpstreamUrl(cleanUrl: URL, upstream: UpstreamConfig): string {
-  const targetUrl = new URL(upstream.target);
+  const targetUrl = new URL(upstream.upstreamBaseUrl);
   const path = cleanUrl.pathname;
   const queryString = cleanUrl.search;
-
+  console.log('Built upstream URL:', `${targetUrl.origin}${path}${queryString}`);
   return `${targetUrl.origin}${path}${queryString}`;
 }
