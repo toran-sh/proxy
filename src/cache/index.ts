@@ -43,8 +43,9 @@ async function createUpstashClient(): Promise<CacheClient> {
 }
 
 async function createRedisClient(): Promise<CacheClient> {
-  // Dynamic import to avoid bundling in Edge runtime
-  const ioredis = await import('ioredis');
+  // String concatenation prevents bundler from statically analyzing this import
+  const moduleName = 'io' + 'redis';
+  const ioredis = await import(moduleName);
   const Redis = ioredis.default;
   const redis = new Redis(process.env.REDIS_URL!);
 
