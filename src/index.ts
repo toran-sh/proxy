@@ -1,8 +1,7 @@
 import { extractSubdomain } from './routing/subdomain.js';
 import { proxyRequest } from './proxy/handler.js';
 import type { UpstreamConfig } from './types/index.js';
-
-const API_BASE = 'https://toran.sh/api';
+import { env } from 'process';
 
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -25,7 +24,7 @@ function addCorsHeaders(response: Response): Response {
 
 async function fetchConfig(subdomain: string): Promise<UpstreamConfig | null> {
   try {
-    const res = await fetch(`${API_BASE}/${subdomain}/configuration`);
+    const res = await fetch(`${env.TORAN_API_URL}/${subdomain}/configuration`);
     if (!res.ok) {
       console.error(`Failed to fetch config for ${subdomain}: ${res.status}`);
       return null;

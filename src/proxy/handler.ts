@@ -1,8 +1,7 @@
 import type { UpstreamConfig, RequestLog } from '../types/index.js';
 import { filterRequestHeaders, filterResponseHeaders, addForwardedHeaders } from './headers.js';
 import { buildUpstreamUrl } from '../routing/subdomain.js';
-
-const API_BASE = 'https://toran.sh/api';
+import { env } from 'process';
 
 export interface ProxyContext {
   subdomain: string;
@@ -12,7 +11,7 @@ export interface ProxyContext {
 
 async function sendLog(subdomain: string, log: RequestLog): Promise<void> {
   try {
-    await fetch(`${API_BASE}/${subdomain}/log`, {
+    await fetch(`${env.TORAN_API_URL}/${subdomain}/log`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(log),

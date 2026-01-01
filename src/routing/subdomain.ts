@@ -10,7 +10,7 @@ export function extractSubdomain(request: Request): string | null {
     return subdomainParam;
   }
 
-  // Extract subdomain from host (e.g., api.toran.sh -> api)
+  // Extract subdomain from host (e.g., api.domain.com -> api)
   const parts = host.split('.');
   if (parts.length > 2) {
     return parts[0];
