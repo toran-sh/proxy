@@ -10,7 +10,12 @@ export interface ProxyContext {
 }
 
 async function sendLog(subdomain: string, log: RequestLog): Promise<void> {
+  if (!process.env.TORAN_API_URL) {
+    console.error('TORAN_API_URL not set, skipping log');
+    return;
+  }
   const url = `${process.env.TORAN_API_URL}/api/${subdomain}/log`;
+  console.log('Sending log to:', url);
   try {
     const res = await fetch(url, {
       method: 'POST',
@@ -19,6 +24,8 @@ async function sendLog(subdomain: string, log: RequestLog): Promise<void> {
     });
     if (!res.ok) {
       console.error('Log API error:', res.status, await res.text());
+    } else {
+      console.log('Log sent successfully');
     }
   } catch (e) {
     console.error('Failed to send log to', url, e);
