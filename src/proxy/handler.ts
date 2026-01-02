@@ -129,8 +129,14 @@ export async function proxyRequest(
     requestInit.body = requestBody;
   }
 
+  // Track network timings
+  const fetchStart = Date.now();
   const response = await fetch(upstreamUrl, requestInit);
+  const ttfb = Date.now() - fetchStart; // Time to first byte (headers received)
+
+  const transferStart = Date.now();
   const responseBody = await response.text();
+  const transfer = Date.now() - transferStart; // Time to read body
 
   const responseHeaders: Record<string, string> = {};
   filterResponseHeaders(response.headers).forEach((value, key) => {
@@ -138,6 +144,7 @@ export async function proxyRequest(
   });
 
   const duration = Date.now() - startTime;
+  const networkMetrics = { ttfb, transfer, total: duration };
 
   // Store in cache if caching is enabled and response is successful
   if (shouldCache && cacheKey && response.ok) {
@@ -170,6 +177,7 @@ export async function proxyRequest(
       bodySize: responseBody.length,
     },
     duration,
+    networkMetrics,
     cacheStatus: shouldCache ? 'MISS' : undefined,
   });
 
