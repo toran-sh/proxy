@@ -144,7 +144,7 @@ export async function proxyRequest(
   });
 
   const duration = Date.now() - startTime;
-  const networkMetrics = { ttfb, transfer, total: duration };
+  const upstreamMetrics = { ttfb, transfer, total: duration };
 
   // Store in cache if caching is enabled and response is successful
   if (shouldCache && cacheKey && response.ok) {
@@ -177,7 +177,7 @@ export async function proxyRequest(
       bodySize: responseBody.length,
     },
     duration,
-    networkMetrics,
+    upstreamMetrics,
     cacheStatus: shouldCache ? 'MISS' : undefined,
   });
 

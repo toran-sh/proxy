@@ -9,7 +9,7 @@ export interface UpstreamConfig {
   cacheTtl?: number;
 }
 
-export interface NetworkMetrics {
+export interface UpstreamMetrics {
   ttfb: number;      // Time until headers received (ms)
   transfer: number;  // Time to read response body (ms)
   total: number;     // Total request duration (ms)
@@ -30,6 +30,6 @@ export interface RequestLog {
     bodySize: number;
   };
   duration: number;
-  networkMetrics?: NetworkMetrics;
+  upstreamMetrics?: UpstreamMetrics;
   cacheStatus?: 'HIT' | 'MISS';
 }
