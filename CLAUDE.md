@@ -119,7 +119,6 @@ TORAN_API_URL=https://toran.sh UPSTASH_REDIS_REST_URL=... UPSTASH_REDIS_REST_TOK
 TORAN_API_URL=https://toran.sh REDIS_URL=redis://localhost:6379 npm run dev
 
 # Test endpoints
-curl "http://localhost:3000/health"
 curl "http://localhost:3000/path?_sub_domain_=myapi"
 ```
 

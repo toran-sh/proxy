@@ -29,19 +29,6 @@ describe('handleRequest', () => {
     });
   });
 
-  describe('health check', () => {
-    it('returns ok for /health endpoint', async () => {
-      const request = new Request('http://localhost/health');
-
-      const response = await handleRequest(request);
-      const body = await response.json();
-
-      expect(response.status).toBe(200);
-      expect(body).toEqual({ status: 'ok' });
-      expect(response.headers.get('access-control-allow-origin')).toBe('*');
-    });
-  });
-
   describe('subdomain handling', () => {
     it('returns 404 for missing subdomain', async () => {
       const request = new Request('http://localhost/api/users');
@@ -160,10 +147,13 @@ describe('handleRequest', () => {
 
   describe('CORS headers', () => {
     it('adds CORS headers to all responses', async () => {
-      const request = new Request('http://localhost/health');
+      // Test with a request that triggers 404 (no subdomain)
+      const request = new Request('http://localhost/api/users');
 
       const response = await handleRequest(request);
 
+      // Even error responses should have CORS headers
+      expect(response.status).toBe(404);
       expect(response.headers.get('access-control-allow-origin')).toBe('*');
       expect(response.headers.get('access-control-allow-methods')).toBe(
         'GET, POST, PUT, DELETE, PATCH, OPTIONS'

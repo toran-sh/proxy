@@ -81,11 +81,6 @@ export async function handleRequest(request: Request): Promise<Response> {
     return addCorsHeaders(new Response(null, { status: 204 }));
   }
 
-  // Health check
-  if (url.pathname === '/health') {
-    return addCorsHeaders(json({ status: 'ok' }));
-  }
-
   // Extract subdomain
   const subdomain = extractSubdomain(request);
 
