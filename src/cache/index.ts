@@ -2,6 +2,7 @@ export interface CachedResponse {
   status: number;
   headers: Record<string, string>;
   body: string;
+  isBase64?: boolean;
 }
 
 export interface CacheClient {

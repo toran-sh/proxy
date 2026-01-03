@@ -64,6 +64,14 @@ export async function proxyRequest(
       if (cached) {
         const duration = Date.now() - startTime;
 
+        // Decode body from base64 if stored that way
+        const responseBody = cached.isBase64
+          ? Buffer.from(cached.body, 'base64')
+          : cached.body;
+        const bodySize = cached.isBase64
+          ? Buffer.from(cached.body, 'base64').byteLength
+          : cached.body.length;
+
         // Log cache hit (await to ensure it completes on Edge)
         await sendLog(subdomain, {
           timestamp: new Date().toISOString(),
@@ -76,7 +84,7 @@ export async function proxyRequest(
           response: {
             status: cached.status,
             headers: cached.headers,
-            bodySize: cached.body.length,
+            bodySize,
           },
           duration,
           cacheStatus: 'HIT',
@@ -88,7 +96,7 @@ export async function proxyRequest(
         }
         outHeaders.set('x-proxy-duration', `${duration}ms`);
         outHeaders.set('x-cache', 'HIT');
-        return new Response(cached.body, {
+        return new Response(responseBody, {
           status: cached.status,
           headers: outHeaders,
         });
@@ -135,7 +143,7 @@ export async function proxyRequest(
   const ttfb = Date.now() - fetchStart; // Time to first byte (headers received)
 
   const transferStart = Date.now();
-  const responseBody = await response.text();
+  const responseBuffer = await response.arrayBuffer();
   const transfer = Date.now() - transferStart; // Time to read body
 
   const responseHeaders: Record<string, string> = {};
@@ -150,10 +158,13 @@ export async function proxyRequest(
   if (shouldCache && cacheKey && response.ok) {
     const cache = await getCache();
     if (cache) {
+      // Encode binary data as base64 for cache storage
+      const bodyBase64 = Buffer.from(responseBuffer).toString('base64');
       const cachedResponse: CachedResponse = {
         status: response.status,
         headers: responseHeaders,
-        body: responseBody,
+        body: bodyBase64,
+        isBase64: true,
       };
       cache.set(cacheKey, cachedResponse, upstream.cacheTtl!).catch((e) => {
         console.error('Failed to cache response:', e);
@@ -174,7 +185,7 @@ export async function proxyRequest(
     response: {
       status: response.status,
       headers: responseHeaders,
-      bodySize: responseBody.length,
+      bodySize: responseBuffer.byteLength,
     },
     duration,
     upstreamMetrics,
@@ -191,7 +202,7 @@ export async function proxyRequest(
     outHeaders.set('x-cache', 'MISS');
   }
 
-  return new Response(responseBody, {
+  return new Response(responseBuffer, {
     status: response.status,
     headers: outHeaders,
   });
