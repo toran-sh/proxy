@@ -16,13 +16,17 @@ export interface TimingMetrics {
   clientToProxy: {
     transfer: number;  // Time to read request body (ms), 0 for GET/HEAD
   };
+  // Proxy processing overhead
+  proxy: {
+    overhead: number;  // Time for header filtering, cache checks, URL building (ms)
+  };
   // Segment 2: Proxy → Upstream (sending request) - bundled into upstreamToProxy.ttfb
   // Segment 3: Upstream → Proxy (receiving response)
   upstreamToProxy: {
-    ttfb: number;      // Time to first byte from upstream (ms)
+    ttfb: number;      // Time to first byte from upstream (ms) - includes DNS, TCP, TLS, request send
     transfer: number;  // Time to read response body (ms)
   };
-  // Segment 4: Proxy → Client (sending response) - not measurable
+  // Segment 4: Proxy → Client (sending response) - not measurable at Edge
   total: number;       // End-to-end duration (ms)
 }
 

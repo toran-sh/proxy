@@ -170,7 +170,8 @@ interface UpstreamConfig {
 
 interface TimingMetrics {
   clientToProxy: { transfer: number };   // Segment 1: read request body
-  upstreamToProxy: { ttfb: number; transfer: number };  // Segment 3: upstream response
+  proxy: { overhead: number };           // Proxy processing (header filtering, URL building)
+  upstreamToProxy: { ttfb: number; transfer: number };  // Segment 2+3: upstream (includes DNS/TCP/TLS)
   total: number;  // End-to-end
 }
 

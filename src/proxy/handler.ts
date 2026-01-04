@@ -187,6 +187,9 @@ export async function proxyRequest(
   }
   const clientToProxyTransfer = Date.now() - requestBodyStart;
 
+  // Proxy processing overhead (header filtering, URL building, etc.)
+  const proxyOverheadStart = Date.now();
+
   // Fetch from upstream
   const upstreamUrl = buildUpstreamUrl(cleanUrl, upstream);
 
@@ -205,7 +208,9 @@ export async function proxyRequest(
     requestInit.body = requestBuffer;
   }
 
-  // Segment 2+3: Proxy ↔ Upstream
+  const proxyOverhead = Date.now() - proxyOverheadStart;
+
+  // Segment 2+3: Proxy ↔ Upstream (includes DNS, TCP, TLS at Edge - opaque)
   const fetchStart = Date.now();
   const response = await fetch(upstreamUrl, requestInit);
   const upstreamTtfb = Date.now() - fetchStart; // Time to first byte (headers received)
@@ -225,6 +230,9 @@ export async function proxyRequest(
   const timing: TimingMetrics = {
     clientToProxy: {
       transfer: clientToProxyTransfer,
+    },
+    proxy: {
+      overhead: proxyOverhead,
     },
     upstreamToProxy: {
       ttfb: upstreamTtfb,
