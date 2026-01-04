@@ -88,7 +88,6 @@ describe('handleRequest', () => {
 
       expect(response.status).toBe(200);
       expect(body).toEqual(mockUpstreamResponse);
-      expect(response.headers.get('x-proxy-duration')).toMatch(/^\d+ms$/);
     });
 
     it('removes _sub_domain_ param before proxying', async () => {

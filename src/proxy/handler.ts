@@ -112,8 +112,6 @@ export async function proxyRequest(
         for (const [key, value] of Object.entries(cached.headers)) {
           outHeaders.set(key, value);
         }
-        outHeaders.set('x-proxy-duration', `${duration}ms`);
-        outHeaders.set('x-cache', 'HIT');
         return new Response(cachedBody, {
           status: cached.status,
           headers: outHeaders,
@@ -234,10 +232,6 @@ export async function proxyRequest(
   const outHeaders = new Headers();
   for (const [key, value] of Object.entries(responseHeaders)) {
     outHeaders.set(key, value);
-  }
-  outHeaders.set('x-proxy-duration', `${duration}ms`);
-  if (shouldCache) {
-    outHeaders.set('x-cache', 'MISS');
   }
 
   return new Response(responseBuffer, {

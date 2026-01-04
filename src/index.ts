@@ -112,14 +112,7 @@ export async function handleRequest(request: Request): Promise<Response> {
       cleanUrl: url,
     });
 
-    // Add config cache header
-    const headers = new Headers(response.headers);
-    headers.set('x-config-cache', configResult.cached ? 'HIT' : 'MISS');
-
-    return addCorsHeaders(new Response(response.body, {
-      status: response.status,
-      headers,
-    }));
+    return addCorsHeaders(response);
   } catch (e) {
     console.error('Proxy error:', e);
     return addCorsHeaders(json({

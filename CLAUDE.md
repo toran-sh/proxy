@@ -49,10 +49,7 @@ api/
 7. If cache miss: Proxy request to upstream target
 8. Cache response if cacheTtl > 0 and response.ok
 9. POST ${TORAN_API_URL}/api/${subdomain}/log (fire-and-forget)
-10. Return response with headers:
-    - x-proxy-duration: latency in ms
-    - x-config-cache: HIT/MISS
-    - x-cache: HIT/MISS (if caching enabled)
+10. Return response to client
 ```
 
 ## Environment Variables
