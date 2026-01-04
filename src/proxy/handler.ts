@@ -14,11 +14,13 @@ export function tryDecodeAsText(
   options?: {
     maxBytes?: number;              // Max bytes to decode (default 256KB)
     controlCharThreshold?: number;  // Max ratio of control chars (default 0.01 = 1%)
+    printableCharThreshold?: number; // Min ratio of printable/whitespace bytes (default 0.85)
   }
 ): string | null {
   const {
     maxBytes = 262144,  // 256KB
     controlCharThreshold = 0.01,  // 1% - strict
+    printableCharThreshold = 0.85, // 85% - strict
   } = options ?? {};
 
   const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
@@ -26,11 +28,26 @@ export function tryDecodeAsText(
   // Empty buffer is valid text
   if (bytes.length === 0) return '';
 
-  const decodeLen = Math.min(bytes.length, maxBytes);
+  // Defensive: reject oversized buffers to avoid prefix-only misclassification.
+  if (bytes.length > maxBytes) return null;
 
-  // 1. Null byte check - any null byte means binary
+  const decodeLen = bytes.length;
+
+  // 1. Null byte + printable ratio check on raw bytes (fast, no decode)
+  let printable = 0;
   for (let i = 0; i < decodeLen; i++) {
-    if (bytes[i] === 0) return null;
+    const b = bytes[i];
+    if (b === 0) return null;
+    const isWhitespace = b === 0x09 || b === 0x0a || b === 0x0d;
+    const isPrintableAscii = b >= 0x20 && b <= 0x7e;
+    const isNonAscii = b >= 0x80;
+    // Treat non-ASCII bytes as potentially printable (validated by UTF-8 decode later).
+    if (isWhitespace || isPrintableAscii || isNonAscii) {
+      printable++;
+    }
+  }
+  if (decodeLen > 0 && printable / decodeLen < printableCharThreshold) {
+    return null;
   }
 
   // 2. UTF-8 decode - must be valid UTF-8
