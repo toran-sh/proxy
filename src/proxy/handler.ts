@@ -65,12 +65,28 @@ export async function proxyRequest(
         const duration = Date.now() - startTime;
 
         // Decode body from base64 if stored that way
-        const responseBody = cached.isBase64
+        const cachedBody = cached.isBase64
           ? Buffer.from(cached.body, 'base64')
           : cached.body;
         const bodySize = cached.isBase64
           ? Buffer.from(cached.body, 'base64').byteLength
           : cached.body.length;
+
+        // Prepare response body for logging if enabled
+        let logBody: string | undefined;
+        if (upstream.logResponseBody) {
+          const contentType = cached.headers['content-type'] || '';
+          const isText = contentType.includes('text/') ||
+            contentType.includes('application/json') ||
+            contentType.includes('application/xml') ||
+            contentType.includes('application/javascript');
+
+          if (isText) {
+            logBody = typeof cachedBody === 'string' ? cachedBody : new TextDecoder().decode(cachedBody);
+          } else {
+            logBody = cached.body; // Already base64 if binary
+          }
+        }
 
         // Log cache hit (await to ensure it completes on Edge)
         await sendLog(subdomain, {
@@ -86,6 +102,7 @@ export async function proxyRequest(
             status: cached.status,
             headers: cached.headers,
             bodySize,
+            body: logBody,
           },
           duration,
           cacheStatus: 'HIT',
@@ -97,7 +114,7 @@ export async function proxyRequest(
         }
         outHeaders.set('x-proxy-duration', `${duration}ms`);
         outHeaders.set('x-cache', 'HIT');
-        return new Response(responseBody, {
+        return new Response(cachedBody, {
           status: cached.status,
           headers: outHeaders,
         });
@@ -173,6 +190,24 @@ export async function proxyRequest(
     }
   }
 
+  // Prepare response body for logging if enabled
+  let responseBody: string | undefined;
+  if (upstream.logResponseBody) {
+    const contentType = responseHeaders['content-type'] || '';
+    const isText = contentType.includes('text/') ||
+      contentType.includes('application/json') ||
+      contentType.includes('application/xml') ||
+      contentType.includes('application/javascript');
+
+    if (isText) {
+      // Decode as text
+      responseBody = new TextDecoder().decode(responseBuffer);
+    } else {
+      // Encode binary as base64
+      responseBody = Buffer.from(responseBuffer).toString('base64');
+    }
+  }
+
   // Send log to API (await to ensure it completes on Edge)
   await sendLog(subdomain, {
     timestamp: new Date().toISOString(),
@@ -188,6 +223,7 @@ export async function proxyRequest(
       status: response.status,
       headers: responseHeaders,
       bodySize: responseBuffer.byteLength,
+      body: responseBody,
     },
     duration,
     upstreamMetrics,

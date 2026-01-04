@@ -7,6 +7,7 @@ export interface UpstreamConfig {
   upstreamBaseUrl: string;
   headers?: HeaderConfig;
   cacheTtl?: number;
+  logResponseBody?: boolean;  // If true, include response body in logs
 }
 
 export interface UpstreamMetrics {
@@ -29,6 +30,7 @@ export interface RequestLog {
     status: number;
     headers: Record<string, string>;
     bodySize: number;
+    body?: string;  // Optional: base64-encoded if binary, raw string if text
   };
   duration: number;
   upstreamMetrics?: UpstreamMetrics;
