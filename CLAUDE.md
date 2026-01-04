@@ -161,6 +161,7 @@ interface UpstreamConfig {
   upstreamBaseUrl: string;
   cacheTtl?: number;
   logResponseBody?: boolean;
+  maxResponseBodySize?: number;  // Max bytes to log (from plan tier, default 100KB)
   headers?: {
     add?: Record<string, string>;
     remove?: string[];
@@ -178,4 +179,31 @@ interface CachedResponse {
   headers: Record<string, string>;
   body: string;
 }
+
+interface RequestLog {
+  // ...
+  response: {
+    status: number;
+    headers: Record<string, string>;
+    bodySize: number;
+    body?: string;  // Text only (binary bodies omitted)
+    bodyHash?: string;  // SHA256 of full body
+    bodyTruncated?: boolean;  // True if body was truncated
+  };
+}
 ```
+
+## Body Handling
+
+Request and response bodies are treated as binary by default. Text detection is performed defensively:
+
+1. **Null byte scanning**: Check first 8KB for null bytes (binary indicator)
+2. **UTF-8 validation**: Try to decode with `fatal: true` flag
+3. **Binary bodies**: Skipped entirely (body stays undefined in logs)
+4. **Text bodies**: Logged with optional truncation
+
+When `logResponseBody` is enabled:
+- SHA256 hash is always computed for the full body
+- Text bodies are truncated at `maxResponseBodySize` (default 100KB)
+- `bodyTruncated: true` is set if truncation occurred
+- Binary bodies are not logged (body field is undefined)

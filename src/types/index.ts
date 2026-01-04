@@ -8,6 +8,7 @@ export interface UpstreamConfig {
   headers?: HeaderConfig;
   cacheTtl?: number;
   logResponseBody?: boolean;  // If true, include response body in logs
+  maxResponseBodySize?: number;  // Max bytes to log (from plan tier)
 }
 
 export interface TimingMetrics {
@@ -39,7 +40,9 @@ export interface RequestLog {
     status: number;
     headers: Record<string, string>;
     bodySize: number;
-    body?: string;  // Optional: base64-encoded if binary, raw string if text
+    body?: string;  // Text only (binary bodies omitted)
+    bodyHash?: string;  // SHA256 of full body
+    bodyTruncated?: boolean;  // True if body was truncated
   };
   duration: number;
   timing?: TimingMetrics;

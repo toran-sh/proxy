@@ -3,6 +3,40 @@ import { filterRequestHeaders, filterResponseHeaders, addForwardedHeaders } from
 import { buildUpstreamUrl } from '../routing/subdomain.js';
 import { getCache, buildCacheKey, type CachedResponse } from '../cache/index.js';
 
+/**
+ * Try to decode a buffer as UTF-8 text.
+ * Returns null if the buffer contains null bytes or invalid UTF-8 (binary).
+ */
+function tryDecodeAsText(buffer: ArrayBuffer | Uint8Array): string | null {
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+
+  // Empty buffer is valid text
+  if (bytes.length === 0) return '';
+
+  // Check for null bytes (binary indicator) in first 8KB
+  for (let i = 0; i < Math.min(bytes.length, 8192); i++) {
+    if (bytes[i] === 0) return null;
+  }
+
+  // Try UTF-8 decode with fatal flag
+  try {
+    const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    return text;
+  } catch {
+    return null; // Invalid UTF-8 = binary
+  }
+}
+
+/**
+ * Compute SHA256 hash of a buffer.
+ */
+async function sha256(buffer: ArrayBuffer | Uint8Array): Promise<string> {
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
 export interface ProxyContext {
   subdomain: string;
   upstream: UpstreamConfig;
@@ -65,27 +99,35 @@ export async function proxyRequest(
         const duration = Date.now() - startTime;
 
         // Decode body from base64 if stored that way
-        const cachedBody = cached.isBase64
+        const cachedBodyBuffer = cached.isBase64
           ? Buffer.from(cached.body, 'base64')
-          : cached.body;
-        const bodySize = cached.isBase64
-          ? Buffer.from(cached.body, 'base64').byteLength
-          : cached.body.length;
+          : Buffer.from(cached.body);
+        const bodySize = cachedBodyBuffer.byteLength;
 
         // Prepare response body for logging if enabled
         let logBody: string | undefined;
-        if (upstream.logResponseBody) {
-          const contentType = cached.headers['content-type'] || '';
-          const isText = contentType.includes('text/') ||
-            contentType.includes('application/json') ||
-            contentType.includes('application/xml') ||
-            contentType.includes('application/javascript');
+        let logBodyHash: string | undefined;
+        let logBodyTruncated = false;
 
-          if (isText) {
-            logBody = typeof cachedBody === 'string' ? cachedBody : new TextDecoder().decode(cachedBody);
-          } else {
-            logBody = cached.body; // Already base64 if binary
+        if (upstream.logResponseBody) {
+          // Always compute hash of full body
+          logBodyHash = await sha256(cachedBodyBuffer);
+
+          // Try to decode as text (ignore content-type header)
+          const fullText = tryDecodeAsText(cachedBodyBuffer);
+
+          if (fullText !== null) {
+            // It's text - potentially truncate
+            const maxSize = upstream.maxResponseBodySize ?? 102400;
+
+            if (fullText.length > maxSize) {
+              logBody = fullText.slice(0, maxSize);
+              logBodyTruncated = true;
+            } else {
+              logBody = fullText;
+            }
           }
+          // Binary bodies: logBody stays undefined
         }
 
         // Log cache hit (await to ensure it completes on Edge)
@@ -103,6 +145,8 @@ export async function proxyRequest(
             headers: cached.headers,
             bodySize,
             body: logBody,
+            bodyHash: logBodyHash,
+            bodyTruncated: logBodyTruncated || undefined,
           },
           duration,
           cacheStatus: 'HIT',
@@ -112,7 +156,7 @@ export async function proxyRequest(
         for (const [key, value] of Object.entries(cached.headers)) {
           outHeaders.set(key, value);
         }
-        return new Response(cachedBody, {
+        return new Response(cachedBodyBuffer, {
           status: cached.status,
           headers: outHeaders,
         });
@@ -122,17 +166,23 @@ export async function proxyRequest(
 
   // Segment 1: Client → Proxy (read request body)
   const requestBodyStart = Date.now();
-  let requestBody: string | null = null;
+  let requestBuffer: ArrayBuffer | null = null;
   let parsedBody: unknown = undefined;
 
   if (method !== 'GET' && method !== 'HEAD') {
-    requestBody = await request.text();
-    if (requestBody) {
-      try {
-        parsedBody = JSON.parse(requestBody);
-      } catch {
-        parsedBody = requestBody;
+    requestBuffer = await request.arrayBuffer();
+
+    if (requestBuffer.byteLength > 0) {
+      // Try to decode as text (ignore content-type header)
+      const requestBodyText = tryDecodeAsText(requestBuffer);
+      if (requestBodyText !== null) {
+        try {
+          parsedBody = JSON.parse(requestBodyText);
+        } catch {
+          parsedBody = requestBodyText;
+        }
       }
+      // Binary request body: parsedBody stays undefined
     }
   }
   const clientToProxyTransfer = Date.now() - requestBodyStart;
@@ -151,8 +201,8 @@ export async function proxyRequest(
     headers,
   };
 
-  if (requestBody && method !== 'GET' && method !== 'HEAD') {
-    requestInit.body = requestBody;
+  if (requestBuffer && requestBuffer.byteLength > 0 && method !== 'GET' && method !== 'HEAD') {
+    requestInit.body = requestBuffer;
   }
 
   // Segment 2+3: Proxy ↔ Upstream
@@ -203,20 +253,28 @@ export async function proxyRequest(
 
   // Prepare response body for logging if enabled
   let responseBody: string | undefined;
-  if (upstream.logResponseBody) {
-    const contentType = responseHeaders['content-type'] || '';
-    const isText = contentType.includes('text/') ||
-      contentType.includes('application/json') ||
-      contentType.includes('application/xml') ||
-      contentType.includes('application/javascript');
+  let bodyHash: string | undefined;
+  let bodyTruncated = false;
 
-    if (isText) {
-      // Decode as text
-      responseBody = new TextDecoder().decode(responseBuffer);
-    } else {
-      // Encode binary as base64
-      responseBody = Buffer.from(responseBuffer).toString('base64');
+  if (upstream.logResponseBody) {
+    // Always compute hash of full body
+    bodyHash = await sha256(responseBuffer);
+
+    // Try to decode as text (ignore content-type header)
+    const fullText = tryDecodeAsText(responseBuffer);
+
+    if (fullText !== null) {
+      // It's text - potentially truncate
+      const maxSize = upstream.maxResponseBodySize ?? 102400; // 100KB default
+
+      if (fullText.length > maxSize) {
+        responseBody = fullText.slice(0, maxSize);
+        bodyTruncated = true;
+      } else {
+        responseBody = fullText;
+      }
     }
+    // Binary bodies: responseBody stays undefined (skip logging body)
   }
 
   // Send log to API (await to ensure it completes on Edge)
@@ -228,13 +286,15 @@ export async function proxyRequest(
       query,
       headers: requestHeaders,
       body: parsedBody,
-      bodySize: requestBody ? requestBody.length : 0,
+      bodySize: requestBuffer ? requestBuffer.byteLength : 0,
     },
     response: {
       status: response.status,
       headers: responseHeaders,
       bodySize: responseBuffer.byteLength,
       body: responseBody,
+      bodyHash,
+      bodyTruncated: bodyTruncated || undefined,
     },
     duration,
     timing,
