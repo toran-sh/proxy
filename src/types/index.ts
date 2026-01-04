@@ -10,10 +10,19 @@ export interface UpstreamConfig {
   logResponseBody?: boolean;  // If true, include response body in logs
 }
 
-export interface UpstreamMetrics {
-  ttfb: number;      // Time until headers received (ms)
-  transfer: number;  // Time to read response body (ms)
-  total: number;     // Total request duration (ms)
+export interface TimingMetrics {
+  // Segment 1: Client → Proxy (receiving request)
+  clientToProxy: {
+    transfer: number;  // Time to read request body (ms), 0 for GET/HEAD
+  };
+  // Segment 2: Proxy → Upstream (sending request) - bundled into upstreamToProxy.ttfb
+  // Segment 3: Upstream → Proxy (receiving response)
+  upstreamToProxy: {
+    ttfb: number;      // Time to first byte from upstream (ms)
+    transfer: number;  // Time to read response body (ms)
+  };
+  // Segment 4: Proxy → Client (sending response) - not measurable
+  total: number;       // End-to-end duration (ms)
 }
 
 export interface RequestLog {
@@ -33,6 +42,6 @@ export interface RequestLog {
     body?: string;  // Optional: base64-encoded if binary, raw string if text
   };
   duration: number;
-  upstreamMetrics?: UpstreamMetrics;
+  timing?: TimingMetrics;
   cacheStatus?: 'HIT' | 'MISS';
 }

@@ -1,4 +1,4 @@
-import type { UpstreamConfig, RequestLog } from '../types/index.js';
+import type { UpstreamConfig, RequestLog, TimingMetrics } from '../types/index.js';
 import { filterRequestHeaders, filterResponseHeaders, addForwardedHeaders } from './headers.js';
 import { buildUpstreamUrl } from '../routing/subdomain.js';
 import { getCache, buildCacheKey, type CachedResponse } from '../cache/index.js';
@@ -120,7 +120,8 @@ export async function proxyRequest(
     }
   }
 
-  // Get request body if present
+  // Segment 1: Client → Proxy (read request body)
+  const requestBodyStart = Date.now();
   let requestBody: string | null = null;
   let parsedBody: unknown = undefined;
 
@@ -134,6 +135,7 @@ export async function proxyRequest(
       }
     }
   }
+  const clientToProxyTransfer = Date.now() - requestBodyStart;
 
   // Fetch from upstream
   const upstreamUrl = buildUpstreamUrl(cleanUrl, upstream);
@@ -153,14 +155,14 @@ export async function proxyRequest(
     requestInit.body = requestBody;
   }
 
-  // Track network timings
+  // Segment 2+3: Proxy ↔ Upstream
   const fetchStart = Date.now();
   const response = await fetch(upstreamUrl, requestInit);
-  const ttfb = Date.now() - fetchStart; // Time to first byte (headers received)
+  const upstreamTtfb = Date.now() - fetchStart; // Time to first byte (headers received)
 
   const transferStart = Date.now();
   const responseBuffer = await response.arrayBuffer();
-  const transfer = Date.now() - transferStart; // Time to read body
+  const upstreamTransfer = Date.now() - transferStart; // Time to read response body
 
   const responseHeaders: Record<string, string> = {};
   filterResponseHeaders(response.headers).forEach((value, key) => {
@@ -168,7 +170,18 @@ export async function proxyRequest(
   });
 
   const duration = Date.now() - startTime;
-  const upstreamMetrics = { ttfb, transfer, total: duration };
+
+  // Timing metrics for all segments
+  const timing: TimingMetrics = {
+    clientToProxy: {
+      transfer: clientToProxyTransfer,
+    },
+    upstreamToProxy: {
+      ttfb: upstreamTtfb,
+      transfer: upstreamTransfer,
+    },
+    total: duration,
+  };
 
   // Store in cache if caching is enabled and response is successful
   if (shouldCache && cacheKey && response.ok) {
@@ -224,7 +237,7 @@ export async function proxyRequest(
       body: responseBody,
     },
     duration,
-    upstreamMetrics,
+    timing,
     cacheStatus: shouldCache ? 'MISS' : undefined,
   });
 

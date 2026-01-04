@@ -93,11 +93,23 @@ Request body:
 ```json
 {
   "timestamp": "2024-01-01T00:00:00.000Z",
-  "request": { "method": "GET", "path": "/", "query": {}, "headers": {}, "body": null },
+  "request": { "method": "GET", "path": "/", "query": {}, "headers": {}, "bodySize": 0 },
   "response": { "status": 200, "headers": {}, "bodySize": 123 },
-  "duration": 45
+  "duration": 45,
+  "timing": {
+    "clientToProxy": { "transfer": 0 },
+    "upstreamToProxy": { "ttfb": 30, "transfer": 10 },
+    "total": 45
+  },
+  "cacheStatus": "MISS"
 }
 ```
+
+Timing segments:
+- **clientToProxy.transfer**: Time to read incoming request body (ms)
+- **upstreamToProxy.ttfb**: Time to first byte from upstream (ms)
+- **upstreamToProxy.transfer**: Time to read upstream response body (ms)
+- **total**: End-to-end duration (ms)
 
 ## Deployment
 
@@ -148,10 +160,17 @@ fly deploy
 interface UpstreamConfig {
   upstreamBaseUrl: string;
   cacheTtl?: number;
+  logResponseBody?: boolean;
   headers?: {
     add?: Record<string, string>;
     remove?: string[];
   };
+}
+
+interface TimingMetrics {
+  clientToProxy: { transfer: number };   // Segment 1: read request body
+  upstreamToProxy: { ttfb: number; transfer: number };  // Segment 3: upstream response
+  total: number;  // End-to-end
 }
 
 interface CachedResponse {
