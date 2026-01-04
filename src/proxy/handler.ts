@@ -8,7 +8,7 @@ import { getHttpClient } from '../http/index.js';
  * Try to decode a buffer as UTF-8 text.
  * Binary by default - returns null unless proven to be valid text.
  */
-function tryDecodeAsText(
+export function tryDecodeAsText(
   buffer: ArrayBuffer | Uint8Array,
   options?: {
     maxBytes?: number;              // Max bytes to decode (default 256KB)
@@ -217,10 +217,9 @@ export async function proxyRequest(
   }
   const clientToProxyTransfer = Date.now() - requestBodyStart;
 
-  // Proxy processing overhead (header filtering, URL building, etc.)
-  const proxyOverheadStart = Date.now();
+  // Pre-upstream processing (header filtering, URL building, client init)
+  const preUpstreamStart = Date.now();
 
-  // Fetch from upstream
   const upstreamUrl = buildUpstreamUrl(cleanUrl, upstream);
 
   const headers = filterRequestHeaders(request.headers, upstream.headers);
@@ -229,11 +228,11 @@ export async function proxyRequest(
   const targetUrl = new URL(upstream.upstreamBaseUrl);
   headers.set('host', targetUrl.host);
 
-  const proxyOverhead = Date.now() - proxyOverheadStart;
+  const httpClient = await getHttpClient();
+
+  const preUpstream = Date.now() - preUpstreamStart;
 
   // Segment 2+3: Proxy ↔ Upstream
-  // Uses runtime-appropriate HTTP client (Edge: fetch, Node.js: http/https with socket timing)
-  const httpClient = await getHttpClient();
   const httpResponse = await httpClient.fetch({
     url: upstreamUrl,
     method: request.method,
@@ -244,31 +243,13 @@ export async function proxyRequest(
   const responseBuffer = httpResponse.body;
   const networkTiming = httpResponse.timing;
 
+  // Post-upstream processing (response headers, cache, body processing)
+  const postUpstreamStart = Date.now();
+
   const responseHeaders: Record<string, string> = {};
   filterResponseHeaders(httpResponse.headers).forEach((value, key) => {
     responseHeaders[key] = value;
   });
-
-  const duration = Date.now() - startTime;
-
-  // Timing metrics for all segments
-  const timing: TimingMetrics = {
-    clientToProxy: {
-      transfer: clientToProxyTransfer,
-    },
-    proxy: {
-      overhead: proxyOverhead,
-    },
-    upstreamToProxy: {
-      dns: networkTiming.dns,
-      tcp: networkTiming.tcp,
-      tls: networkTiming.tls,
-      request: networkTiming.request,
-      ttfb: networkTiming.ttfb,
-      transfer: networkTiming.transfer,
-    },
-    total: duration,
-  };
 
   // Use the response from HTTP client
   const response = {
@@ -320,7 +301,31 @@ export async function proxyRequest(
     // Binary bodies: responseBody stays undefined (skip logging body)
   }
 
-  // Send log to API (await to ensure it completes on Edge)
+  const postUpstream = Date.now() - postUpstreamStart;
+
+  // Timing metrics (logging will be updated after sendLog)
+  const timing: TimingMetrics = {
+    clientToProxy: {
+      transfer: clientToProxyTransfer,
+    },
+    proxy: {
+      preUpstream,
+      postUpstream,
+      logging: 0,  // Updated after sendLog
+    },
+    upstreamToProxy: {
+      dns: networkTiming.dns,
+      tcp: networkTiming.tcp,
+      tls: networkTiming.tls,
+      request: networkTiming.request,
+      ttfb: networkTiming.ttfb,
+      transfer: networkTiming.transfer,
+    },
+    total: 0,  // Updated after sendLog
+  };
+
+  // Send log to API (must await on Edge - blocks response)
+  const logStart = Date.now();
   await sendLog(subdomain, {
     timestamp: new Date().toISOString(),
     request: {
@@ -339,10 +344,12 @@ export async function proxyRequest(
       bodyHash,
       bodyTruncated: bodyTruncated || undefined,
     },
-    duration,
-    timing,
+    duration: Date.now() - startTime,  // Snapshot at log time
+    timing,  // Note: logging=0 in log, actual value known after
     cacheStatus: shouldCache ? 'MISS' : undefined,
   });
+  timing.proxy.logging = Date.now() - logStart;
+  timing.total = Date.now() - startTime;
 
   // Build response
   const outHeaders = new Headers();

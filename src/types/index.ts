@@ -16,9 +16,11 @@ export interface TimingMetrics {
   clientToProxy: {
     transfer: number;  // Time to read request body (ms), 0 for GET/HEAD
   };
-  // Proxy processing overhead
+  // Proxy processing
   proxy: {
-    overhead: number;  // Time for header filtering, cache checks, URL building (ms)
+    preUpstream: number;   // Header filtering, URL building (ms)
+    postUpstream: number;  // SHA256, text detection, cache storage (ms)
+    logging: number;       // Time to send log to API (ms) - blocks on Edge
   };
   // Segment 2+3: Proxy ↔ Upstream
   upstreamToProxy: {
