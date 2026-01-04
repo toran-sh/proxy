@@ -148,7 +148,9 @@ fly deploy
 
 - **Edge-first**: Deployed as Vercel Edge Function for low latency
 - **Dual cache backends**: Upstash (HTTP) for Edge, ioredis (TCP) for Node.js
+- **Dual HTTP clients**: Edge uses native fetch, Node.js uses http/https with socket timing
 - **Dynamic import trick**: `'io' + 'redis'` prevents Edge bundler from analyzing ioredis
+- **Runtime detection**: Auto-detects Edge vs Node.js, set `FORCE_EDGE_RUNTIME=true` to override
 - **CORS enabled**: All origins allowed
 - **Fire-and-forget logging**: Logs sent async, doesn't block response
 - **Header stripping**: Removes x-powered-by, server from upstream responses
@@ -171,7 +173,14 @@ interface UpstreamConfig {
 interface TimingMetrics {
   clientToProxy: { transfer: number };   // Segment 1: read request body
   proxy: { overhead: number };           // Proxy processing (header filtering, URL building)
-  upstreamToProxy: { ttfb: number; transfer: number };  // Segment 2+3: upstream (includes DNS/TCP/TLS)
+  upstreamToProxy: {
+    dns?: number;      // DNS lookup (Node.js only)
+    tcp?: number;      // TCP connection (Node.js only)
+    tls?: number;      // TLS handshake (Node.js only)
+    request?: number;  // Request send (Node.js only)
+    ttfb: number;      // Time to first byte
+    transfer: number;  // Response body transfer
+  };
   total: number;  // End-to-end
 }
 

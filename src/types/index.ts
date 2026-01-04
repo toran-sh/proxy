@@ -20,13 +20,16 @@ export interface TimingMetrics {
   proxy: {
     overhead: number;  // Time for header filtering, cache checks, URL building (ms)
   };
-  // Segment 2: Proxy → Upstream (sending request) - bundled into upstreamToProxy.ttfb
-  // Segment 3: Upstream → Proxy (receiving response)
+  // Segment 2+3: Proxy ↔ Upstream
   upstreamToProxy: {
-    ttfb: number;      // Time to first byte from upstream (ms) - includes DNS, TCP, TLS, request send
+    dns?: number;      // DNS lookup time (ms) - Node.js only
+    tcp?: number;      // TCP connection time (ms) - Node.js only
+    tls?: number;      // TLS handshake time (ms) - Node.js only
+    request?: number;  // Time to send request body (ms) - Node.js only
+    ttfb: number;      // Time to first byte from upstream (ms)
     transfer: number;  // Time to read response body (ms)
   };
-  // Segment 4: Proxy → Client (sending response) - not measurable at Edge
+  // Segment 4: Proxy → Client (sending response) - not measurable
   total: number;       // End-to-end duration (ms)
 }
 

@@ -2,6 +2,7 @@ import type { UpstreamConfig, RequestLog, TimingMetrics } from '../types/index.j
 import { filterRequestHeaders, filterResponseHeaders, addForwardedHeaders } from './headers.js';
 import { buildUpstreamUrl } from '../routing/subdomain.js';
 import { getCache, buildCacheKey, type CachedResponse } from '../cache/index.js';
+import { getHttpClient } from '../http/index.js';
 
 /**
  * Try to decode a buffer as UTF-8 text.
@@ -199,28 +200,23 @@ export async function proxyRequest(
   const targetUrl = new URL(upstream.upstreamBaseUrl);
   headers.set('host', targetUrl.host);
 
-  const requestInit: RequestInit = {
-    method: request.method,
-    headers,
-  };
-
-  if (requestBuffer && requestBuffer.byteLength > 0 && method !== 'GET' && method !== 'HEAD') {
-    requestInit.body = requestBuffer;
-  }
-
   const proxyOverhead = Date.now() - proxyOverheadStart;
 
-  // Segment 2+3: Proxy ↔ Upstream (includes DNS, TCP, TLS at Edge - opaque)
-  const fetchStart = Date.now();
-  const response = await fetch(upstreamUrl, requestInit);
-  const upstreamTtfb = Date.now() - fetchStart; // Time to first byte (headers received)
+  // Segment 2+3: Proxy ↔ Upstream
+  // Uses runtime-appropriate HTTP client (Edge: fetch, Node.js: http/https with socket timing)
+  const httpClient = await getHttpClient();
+  const httpResponse = await httpClient.fetch({
+    url: upstreamUrl,
+    method: request.method,
+    headers,
+    body: requestBuffer ?? undefined,
+  });
 
-  const transferStart = Date.now();
-  const responseBuffer = await response.arrayBuffer();
-  const upstreamTransfer = Date.now() - transferStart; // Time to read response body
+  const responseBuffer = httpResponse.body;
+  const networkTiming = httpResponse.timing;
 
   const responseHeaders: Record<string, string> = {};
-  filterResponseHeaders(response.headers).forEach((value, key) => {
+  filterResponseHeaders(httpResponse.headers).forEach((value, key) => {
     responseHeaders[key] = value;
   });
 
@@ -235,10 +231,20 @@ export async function proxyRequest(
       overhead: proxyOverhead,
     },
     upstreamToProxy: {
-      ttfb: upstreamTtfb,
-      transfer: upstreamTransfer,
+      dns: networkTiming.dns,
+      tcp: networkTiming.tcp,
+      tls: networkTiming.tls,
+      request: networkTiming.request,
+      ttfb: networkTiming.ttfb,
+      transfer: networkTiming.transfer,
     },
     total: duration,
+  };
+
+  // Use the response from HTTP client
+  const response = {
+    status: httpResponse.status,
+    ok: httpResponse.status >= 200 && httpResponse.status < 300,
   };
 
   // Store in cache if caching is enabled and response is successful

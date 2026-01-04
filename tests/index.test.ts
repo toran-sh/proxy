@@ -1,17 +1,25 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { handleRequest } from '../src/index.js';
+import { resetHttpClient } from '../src/http/index.js';
 
 describe('handleRequest', () => {
   const originalFetch = global.fetch;
   const originalEnv = process.env.TORAN_API_URL;
+  const originalForceEdge = process.env.FORCE_EDGE_RUNTIME;
 
   beforeEach(() => {
     process.env.TORAN_API_URL = 'https://toran.sh';
+    // Force Edge runtime so tests use the mock fetch
+    process.env.FORCE_EDGE_RUNTIME = 'true';
+    // Reset HTTP client to pick up the new runtime setting
+    resetHttpClient();
   });
 
   afterEach(() => {
     global.fetch = originalFetch;
     process.env.TORAN_API_URL = originalEnv;
+    process.env.FORCE_EDGE_RUNTIME = originalForceEdge;
+    resetHttpClient();
   });
 
   describe('CORS preflight', () => {
