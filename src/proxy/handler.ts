@@ -80,6 +80,7 @@ export async function proxyRequest(
             path,
             query,
             headers: requestHeaders,
+            bodySize: 0, // Cache hits are always GET requests with no body
           },
           response: {
             status: cached.status,
@@ -181,6 +182,7 @@ export async function proxyRequest(
       query,
       headers: requestHeaders,
       body: parsedBody,
+      bodySize: requestBody ? requestBody.length : 0,
     },
     response: {
       status: response.status,

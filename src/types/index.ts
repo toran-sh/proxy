@@ -23,6 +23,7 @@ export interface RequestLog {
     query: Record<string, string>;
     headers: Record<string, string>;
     body?: unknown;
+    bodySize: number;
   };
   response: {
     status: number;
