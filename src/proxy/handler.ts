@@ -6,44 +6,50 @@ import { getHttpClient } from '../http/index.js';
 
 /**
  * Try to decode a buffer as UTF-8 text.
- * Returns null if the buffer contains null bytes, invalid UTF-8, or too many control characters.
+ * Binary by default - returns null unless proven to be valid text.
  */
 function tryDecodeAsText(
   buffer: ArrayBuffer | Uint8Array,
   options?: {
-    sampleBytes?: number;           // Bytes to sample for null byte check (default 8192)
     maxBytes?: number;              // Max bytes to decode (default 256KB)
-    controlCharThreshold?: number;  // Max ratio of control chars in decoded text (default 0.1)
+    controlCharThreshold?: number;  // Max ratio of control chars (default 0.01 = 1%)
   }
 ): string | null {
   const {
-    sampleBytes = 8192,
     maxBytes = 262144,  // 256KB
-    controlCharThreshold = 0.1,
+    controlCharThreshold = 0.01,  // 1% - strict
   } = options ?? {};
 
   const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
 
+  // Empty buffer is valid text
   if (bytes.length === 0) return '';
 
-  // 1. Null byte check on sample (binary indicator)
-  const sampleLen = Math.min(bytes.length, sampleBytes);
-  for (let i = 0; i < sampleLen; i++) {
+  const decodeLen = Math.min(bytes.length, maxBytes);
+
+  // 1. Null byte check - any null byte means binary
+  for (let i = 0; i < decodeLen; i++) {
     if (bytes[i] === 0) return null;
   }
 
-  // 2. UTF-8 decode (bounded)
-  const decodeLen = Math.min(bytes.length, maxBytes);
+  // 2. UTF-8 decode - must be valid UTF-8
   let text: string;
   try {
     text = new TextDecoder('utf-8', { fatal: true }).decode(bytes.subarray(0, decodeLen));
   } catch {
-    return null; // Invalid UTF-8 = binary
+    return null;
   }
 
-  // 3. Control character check on decoded text (works with UTF-8 multi-byte chars)
-  // Match ASCII control chars except tab, LF, CR
-  const controlChars = text.match(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g)?.length ?? 0;
+  // 3. Control character check - reject if too many non-whitespace control chars
+  let controlChars = 0;
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    // Control chars 0x00-0x1F except TAB(0x09), LF(0x0A), CR(0x0D)
+    // Also include DEL (0x7F)
+    if ((c <= 0x1f && c !== 0x09 && c !== 0x0a && c !== 0x0d) || c === 0x7f) {
+      controlChars++;
+    }
+  }
   if (text.length > 0 && controlChars / text.length > controlCharThreshold) {
     return null;
   }
