@@ -6,26 +6,49 @@ import { getHttpClient } from '../http/index.js';
 
 /**
  * Try to decode a buffer as UTF-8 text.
- * Returns null if the buffer contains null bytes or invalid UTF-8 (binary).
+ * Returns null if the buffer contains null bytes, invalid UTF-8, or too many control characters.
  */
-function tryDecodeAsText(buffer: ArrayBuffer | Uint8Array): string | null {
+function tryDecodeAsText(
+  buffer: ArrayBuffer | Uint8Array,
+  options?: {
+    sampleBytes?: number;           // Bytes to sample for null byte check (default 8192)
+    maxBytes?: number;              // Max bytes to decode (default 256KB)
+    controlCharThreshold?: number;  // Max ratio of control chars in decoded text (default 0.1)
+  }
+): string | null {
+  const {
+    sampleBytes = 8192,
+    maxBytes = 262144,  // 256KB
+    controlCharThreshold = 0.1,
+  } = options ?? {};
+
   const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
 
-  // Empty buffer is valid text
   if (bytes.length === 0) return '';
 
-  // Check for null bytes (binary indicator) in first 8KB
-  for (let i = 0; i < Math.min(bytes.length, 8192); i++) {
+  // 1. Null byte check on sample (binary indicator)
+  const sampleLen = Math.min(bytes.length, sampleBytes);
+  for (let i = 0; i < sampleLen; i++) {
     if (bytes[i] === 0) return null;
   }
 
-  // Try UTF-8 decode with fatal flag
+  // 2. UTF-8 decode (bounded)
+  const decodeLen = Math.min(bytes.length, maxBytes);
+  let text: string;
   try {
-    const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-    return text;
+    text = new TextDecoder('utf-8', { fatal: true }).decode(bytes.subarray(0, decodeLen));
   } catch {
     return null; // Invalid UTF-8 = binary
   }
+
+  // 3. Control character check on decoded text (works with UTF-8 multi-byte chars)
+  // Match ASCII control chars except tab, LF, CR
+  const controlChars = text.match(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g)?.length ?? 0;
+  if (text.length > 0 && controlChars / text.length > controlCharThreshold) {
+    return null;
+  }
+
+  return text;
 }
 
 /**
