@@ -172,7 +172,10 @@ interface UpstreamConfig {
 
 interface TimingMetrics {
   clientToProxy: { transfer: number };   // Segment 1: read request body
-  proxy: { overhead: number };           // Proxy processing (header filtering, URL building)
+  proxy: {
+    preUpstream: number;   // Header filtering, URL building (ms)
+    postUpstream: number;  // SHA256, text detection, cache storage (ms)
+  };
   upstreamToProxy: {
     dns?: number;      // DNS lookup (Node.js only)
     tcp?: number;      // TCP connection (Node.js only)
@@ -181,7 +184,7 @@ interface TimingMetrics {
     ttfb: number;      // Time to first byte
     transfer: number;  // Response body transfer
   };
-  total: number;  // End-to-end
+  total: number;  // Processing time before logging (ms)
 }
 
 interface CachedResponse {
@@ -205,15 +208,20 @@ interface RequestLog {
 
 ## Body Handling
 
-Request and response bodies are treated as binary by default. Text detection is performed defensively:
+Request and response bodies are treated as binary by default. Text detection is performed defensively via `tryDecodeAsText()`:
 
-1. **Null byte scanning**: Check first 8KB for null bytes (binary indicator)
-2. **UTF-8 validation**: Try to decode with `fatal: true` flag
-3. **Binary bodies**: Skipped entirely (body stays undefined in logs)
-4. **Text bodies**: Logged with optional truncation
+1. **Size check**: Reject buffers > maxBytes (256KB) to avoid prefix-only misclassification
+2. **Null byte scan**: Any null byte (0x00) means binary
+3. **Printable ratio check**: Require 85% printable bytes (ASCII 0x20-0x7E, whitespace, or UTF-8 high bytes >= 0x80)
+4. **UTF-8 validation**: Decode with `fatal: true` flag - invalid sequences mean binary
+5. **Control char check**: Reject if > 1% non-whitespace control chars (0x01-0x08, 0x0B-0x0C, 0x0E-0x1F, 0x7F)
+
+**Binary bodies**: Skipped entirely (body stays undefined in logs)
+**Text bodies**: Logged with optional truncation
 
 When `logResponseBody` is enabled:
 - SHA256 hash is always computed for the full body
 - Text bodies are truncated at `maxResponseBodySize` (default 100KB)
 - `bodyTruncated: true` is set if truncation occurred
 - Binary bodies are not logged (body field is undefined)
+- UTF-8 multi-byte text (Chinese, Japanese, Arabic, emoji) is supported
