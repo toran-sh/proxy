@@ -20,7 +20,6 @@ export interface TimingMetrics {
   proxy: {
     preUpstream: number;   // Header filtering, URL building (ms)
     postUpstream: number;  // SHA256, text detection, cache storage (ms)
-    logging: number;       // Time to send log to API (ms) - blocks on Edge
   };
   // Segment 2+3: Proxy ↔ Upstream
   upstreamToProxy: {
@@ -31,8 +30,9 @@ export interface TimingMetrics {
     ttfb: number;      // Time to first byte from upstream (ms)
     transfer: number;  // Time to read response body (ms)
   };
-  // Segment 4: Proxy → Client (sending response) - not measurable
-  total: number;       // End-to-end duration (ms)
+  // Note: Logging time not included - happens after timing is captured
+  // On Edge, logging blocks response but can't be measured in the log itself
+  total: number;       // Processing time before logging (ms)
 }
 
 export interface RequestLog {

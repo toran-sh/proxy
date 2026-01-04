@@ -3,6 +3,7 @@ import { filterRequestHeaders, filterResponseHeaders, addForwardedHeaders } from
 import { buildUpstreamUrl } from '../routing/subdomain.js';
 import { getCache, buildCacheKey, type CachedResponse } from '../cache/index.js';
 import { getHttpClient } from '../http/index.js';
+import { detectRuntime } from '../http/types.js';
 
 /**
  * Try to decode a buffer as UTF-8 text.
@@ -302,8 +303,9 @@ export async function proxyRequest(
   }
 
   const postUpstream = Date.now() - postUpstreamStart;
+  const total = Date.now() - startTime;
 
-  // Timing metrics (logging will be updated after sendLog)
+  // Timing metrics - captured before logging
   const timing: TimingMetrics = {
     clientToProxy: {
       transfer: clientToProxyTransfer,
@@ -311,7 +313,6 @@ export async function proxyRequest(
     proxy: {
       preUpstream,
       postUpstream,
-      logging: 0,  // Updated after sendLog
     },
     upstreamToProxy: {
       dns: networkTiming.dns,
@@ -321,12 +322,10 @@ export async function proxyRequest(
       ttfb: networkTiming.ttfb,
       transfer: networkTiming.transfer,
     },
-    total: 0,  // Updated after sendLog
+    total,
   };
 
-  // Send log to API (must await on Edge - blocks response)
-  const logStart = Date.now();
-  await sendLog(subdomain, {
+  const logPayload = {
     timestamp: new Date().toISOString(),
     request: {
       method,
@@ -344,12 +343,21 @@ export async function proxyRequest(
       bodyHash,
       bodyTruncated: bodyTruncated || undefined,
     },
-    duration: Date.now() - startTime,  // Snapshot at log time
-    timing,  // Note: logging=0 in log, actual value known after
-    cacheStatus: shouldCache ? 'MISS' : undefined,
-  });
-  timing.proxy.logging = Date.now() - logStart;
-  timing.total = Date.now() - startTime;
+    duration: total,
+    timing,
+    cacheStatus: shouldCache ? 'MISS' as const : undefined,
+  };
+
+  // Send log - must await on Edge (process terminates), fire-and-forget on Node.js
+  const runtime = detectRuntime();
+  if (runtime === 'edge') {
+    await sendLog(subdomain, logPayload);
+  } else {
+    // Node.js: fire-and-forget for faster response
+    sendLog(subdomain, logPayload).catch((e) => {
+      console.error('Background log failed:', e);
+    });
+  }
 
   // Build response
   const outHeaders = new Headers();
